@@ -1,0 +1,10 @@
+---
+# Defaults for kristijorgji.devops.nodejs (override per play/role include).
+pnpm_node_version: "22.16.0"
+pnpm_builder_version: "9.15.4"
+pnpm_build_store_path: "{{ lookup('env', 'HOME') }}/.pnpm-store"
+pnpm_run_install: true
+pnpm_nvm_apply_cross_platform: false
+pnpm_ensure_builder_run_once: true
+# Optional private registry token (passed as NODE_AUTH_TOKEN; leave empty if unused).
+github_packages_token: ""

@@ -1,0 +1,26 @@
+---
+# Dockerized arbitrary pnpm command (e.g. pnpm build).
+# Requires: projectName, codePath, dockerBuilderImage, pnpm_docker_command, delegate_build_to_host
+# Optional: pnpm_docker_extra_volume_flags
+
+- name: "{{ projectName }} - docker pnpm exec: {{ pnpm_docker_command }}"
+  ansible.builtin.shell: >-
+    docker container run --rm --entrypoint='' -u root
+    --platform {{ docker_target_platform | default('linux/amd64') }}
+    -v {{ codePath }}:/usr/src/app
+    {{ pnpm_docker_extra_volume_flags | default('') }}
+    -v {{ pnpm_build_store_path }}:/pnpm-store
+    -e PNPM_STORE_DIR=/pnpm-store
+    -e CI=1
+    -e NODE_AUTH_TOKEN
+    -w /usr/src/app
+    {{ dockerBuilderImage }}
+    {{ pnpm_docker_command }}
+  environment:
+    NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
+  no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
+  delegate_to: "{{ delegate_build_to_host }}"
+  become: "{{ become_in_build_machine | default(false) }}"
+  when:
+    - pnpm_docker_command is defined
+    - pnpm_docker_command | length > 0

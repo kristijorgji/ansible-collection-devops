@@ -1,0 +1,27 @@
+---
+namespace: kristijorgji
+name: devops
+version: 0.1.0
+readme: README.md
+authors:
+  - Kristi Jorgji
+description: >
+  Reusable Ansible roles for devops build and transfer helpers
+  (Node/pnpm via nvm or Docker, rsync artefact sync). Extensible with more roles.
+license:
+  - MIT
+tags:
+  - devops
+  - nodejs
+  - pnpm
+  - nvm
+  - rsync
+  - docker
+repository: https://github.com/kristijorgji/ansible-collection-devops
+documentation: https://github.com/kristijorgji/ansible-collection-devops
+homepage: https://github.com/kristijorgji/ansible-collection-devops
+issues: https://github.com/kristijorgji/ansible-collection-devops/issues
+build_ignore:
+  - .git
+  - .gitignore
+  - "*.tar.gz"

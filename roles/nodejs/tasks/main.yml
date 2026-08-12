@@ -1,0 +1,7 @@
+---
+# Placeholder so the role is valid; use tasks_from (nvm_exec, docker_*, ensure_builder_image).
+- name: kristijorgji.devops.nodejs - use tasks_from
+  ansible.builtin.debug:
+    msg: >-
+      Include this role with tasks_from set to nvm_exec, ensure_builder_image,
+      docker_install, or docker_exec.

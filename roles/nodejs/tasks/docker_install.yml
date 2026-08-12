@@ -1,0 +1,31 @@
+---
+# Dockerized pnpm install with shared store mount.
+# Requires: projectName, codePath, dockerBuilderImage, delegate_build_to_host
+
+- name: "{{ projectName }} - ensure pnpm store directory exists"
+  ansible.builtin.file:
+    path: "{{ pnpm_build_store_path }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ delegate_build_to_host }}"
+  become: "{{ become_in_build_machine | default(false) }}"
+  when: pnpm_run_install | default(true) | bool
+
+- name: "{{ projectName }} - docker pnpm install at {{ codePath }}"
+  ansible.builtin.shell: >-
+    docker container run --rm --entrypoint='' -u root
+    --platform {{ docker_target_platform | default('linux/amd64') }}
+    -v {{ codePath }}:/usr/src/app
+    -v {{ pnpm_build_store_path }}:/pnpm-store
+    -e PNPM_STORE_DIR=/pnpm-store
+    -e CI=1
+    -e NODE_AUTH_TOKEN
+    -w /usr/src/app
+    {{ dockerBuilderImage }}
+    pnpm install --frozen-lockfile --prefer-offline {{ pnpm_docker_install_args | default('') }}
+  environment:
+    NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
+  no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
+  delegate_to: "{{ delegate_build_to_host }}"
+  become: "{{ become_in_build_machine | default(false) }}"
+  when: pnpm_run_install | default(true) | bool

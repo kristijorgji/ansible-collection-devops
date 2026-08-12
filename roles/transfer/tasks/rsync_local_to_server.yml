@@ -1,0 +1,43 @@
+---
+# Push a local tree to serverCodePath (rsync delete preserves bind-mount inode).
+# synchronize runs on the control node by default — do not delegate_to 127.0.0.1
+# (breaks inventory SSH key handling and can inherit play become on localhost).
+# Requires: codePath, serverCodePath, projectName
+# Optional: rsync_src (default {{ codePath }}/),
+#           rsync_dest_suffix (default ''; e.g. /build),
+#           rsync_exclude (default ['.git']), rsync_run_transfer (default true)
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }}{{ rsync_dest_suffix | default('') }} exists"
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}{{ rsync_dest_suffix | default('') }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: rsync_run_transfer | default(true) | bool
+
+- name: "{{ projectName }} - rsync artefact from controller to server"
+  ansible.posix.synchronize:
+    src: "{{ rsync_src | default(codePath + '/') }}"
+    dest: "{{ serverCodePath }}{{ rsync_dest_suffix | default('') }}/"
+    mode: push
+    delete: true
+    recursive: true
+    use_ssh_args: true
+    private_key: "{{ ansible_ssh_private_key_file | default(omit) }}"
+    rsync_opts: >-
+      {{
+        (rsync_exclude | default(['.git']))
+        | map('regex_replace', '^', '--exclude=')
+        | list
+      }}
+  when: rsync_run_transfer | default(true) | bool
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }} is owned by app user"
+  become: true
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}"
+    state: directory
+    recurse: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: rsync_run_transfer | default(true) | bool

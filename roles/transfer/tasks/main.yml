@@ -1,0 +1,4 @@
+---
+- name: kristijorgji.devops.transfer - use tasks_from
+  ansible.builtin.debug:
+    msg: Include this role with tasks_from set to rsync_local_to_server.
