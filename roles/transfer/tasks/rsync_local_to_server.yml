@@ -6,6 +6,9 @@
 # Optional: rsync_src (default {{ codePath }}/),
 #           rsync_dest_suffix (default ''; e.g. /build),
 #           rsync_exclude (default ['.git']), rsync_run_transfer (default true)
+#
+# Relative ansible_ssh_private_key_file values are resolved against PWD (ansible-playbook
+# cwd; typically the repo root under make) so ssh -i works when ControlMaster is disabled.
 
 - name: "{{ projectName }} - ensure server code path {{ serverCodePath }}{{ rsync_dest_suffix | default('') }} exists"
   ansible.builtin.file:
@@ -16,6 +19,16 @@
   when: rsync_run_transfer | default(true) | bool
 
 - name: "{{ projectName }} - rsync artefact from controller to server"
+  vars:
+    _transfer_ssh_private_key: >-
+      {{
+        '' if (ansible_ssh_private_key_file | default('') | length) == 0
+        else (
+          ansible_ssh_private_key_file
+          if (ansible_ssh_private_key_file is match('^/'))
+          else (lookup('env', 'PWD') ~ '/' ~ ansible_ssh_private_key_file)
+        )
+      }}
   ansible.posix.synchronize:
     src: "{{ rsync_src | default(codePath + '/') }}"
     dest: "{{ serverCodePath }}{{ rsync_dest_suffix | default('') }}/"
@@ -23,7 +36,7 @@
     delete: true
     recursive: true
     use_ssh_args: true
-    private_key: "{{ ansible_ssh_private_key_file | default(omit) }}"
+    private_key: "{{ _transfer_ssh_private_key if (_transfer_ssh_private_key | length) > 0 else omit }}"
     rsync_opts: >-
       {{
         (rsync_exclude | default(['.git']))

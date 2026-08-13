@@ -10,7 +10,7 @@ Install the whole collection; call only the roles you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.1.0
+    version: v0.1.1
 ```
 
 ```shell

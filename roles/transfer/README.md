@@ -19,3 +19,6 @@
 | `rsync_run_transfer` | `true`            | Skip when false                                 |
 
 Requires the `ansible.posix` collection. Do **not** `delegate_to: 127.0.0.1` on synchronize.
+
+Relative `ansible_ssh_private_key_file` paths are absolutized against `PWD` (ansible-playbook
+cwd) before passing to `ssh -i`, because synchronize disables SSH ControlMaster.
