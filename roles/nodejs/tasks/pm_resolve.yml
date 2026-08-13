@@ -1,0 +1,33 @@
+---
+# Resolve node_pm_cfg from node_package_manager + node_package_managers.
+
+- name: "nodejs - validate node_package_manager"
+  ansible.builtin.assert:
+    that:
+      - node_package_manager in node_package_managers
+    fail_msg: >-
+      node_package_manager must be one of
+      {{ node_package_managers.keys() | list | join(', ') }};
+      got {{ node_package_manager | default('(undefined)') }}.
+
+- name: "nodejs - resolve package manager config"
+  ansible.builtin.set_fact:
+    node_pm_cfg: "{{ node_package_managers[node_package_manager] }}"
+    node_pm_install_args_effective: >-
+      {{
+        node_install_args
+        if (node_install_args | default('') | length > 0)
+        else node_package_managers[node_package_manager].install_args
+      }}
+    node_pm_host_cache_dir: "{{ node_package_managers[node_package_manager].host_cache_dir }}"
+    node_pm_cross_platform_shell: >-
+      {{
+        'eval "$(bash "' + role_path + '/files/npm_cross_platform_env.sh" "'
+        + (docker_target_platform | default('linux/amd64')) + '")"'
+        if node_apply_cross_platform | default(false) | bool
+        else ''
+      }}
+    node_pm_docker_cache_env_args: >-
+      {% for item in node_package_managers[node_package_manager].cache_env | dict2items %}
+      -e {{ item.key }}={{ item.value }}
+      {% endfor %}

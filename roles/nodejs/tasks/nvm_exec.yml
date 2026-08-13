@@ -1,31 +1,23 @@
 ---
-# Native nvm + pnpm install (optional) and optional pnpm_nvm_command.
-# Requires: projectName, codePath, delegate_build_to_host
-# Optional: pnpm_node_version, pnpm_builder_version, pnpm_run_install,
-#   pnpm_nvm_command, pnpm_nvm_install_args, pnpm_nvm_apply_cross_platform,
-#   docker_target_platform, github_packages_token, become_in_build_machine
+# Native nvm + package-manager install (optional) and optional node_command.
+# Prefer tasks_from: pnpm_nvm_exec (sets node_package_manager: pnpm) from consumers.
+# Requires: projectName, codePath, delegate_build_to_host, node_package_manager
 
-- name: "{{ projectName }} - nvm pnpm install at {{ codePath }}"
+- ansible.builtin.import_tasks: pm_resolve.yml
+
+- name: "{{ projectName }} - native: {{ node_package_manager }} install at {{ codePath }}"
   ansible.builtin.shell: |
     set -e
     unset NPM_CONFIG_PREFIX
     export CI=1
     # shellcheck source=/dev/null
     . "{{ role_path }}/files/nvm_init.sh"
-    nvm install {{ pnpm_node_version }}
-    nvm use {{ pnpm_node_version }}
-    corepack enable
-    corepack prepare pnpm@{{ pnpm_builder_version }} --activate
-    {{ pnpm_nvm_cross_platform_shell | default('') }}
+    nvm install {{ node_version }}
+    nvm use {{ node_version }}
+    {{ node_pm_cfg.activate_shell }}
+    {{ node_pm_cross_platform_shell | default('') }}
     cd "{{ codePath }}"
-    pnpm install --frozen-lockfile --prefer-offline {{ pnpm_nvm_install_args | default('') }}
-  vars:
-    pnpm_nvm_cross_platform_shell: >-
-      {{
-        'eval "$(bash "' + role_path + '/files/npm_cross_platform_env.sh" "' + (docker_target_platform | default('linux/amd64')) + '")"'
-        if pnpm_nvm_apply_cross_platform | default(false) | bool
-        else ''
-      }}
+    {{ node_package_manager }} {{ node_pm_install_args_effective }}
   args:
     executable: /bin/bash
   environment:
@@ -34,47 +26,39 @@
   no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
-  register: pnpm_nvm_install_result
+  register: node_nvm_install_result
   failed_when: false
-  changed_when: pnpm_nvm_install_result.rc == 0
-  when: pnpm_run_install | default(true) | bool
+  changed_when: node_nvm_install_result.rc == 0
+  when: node_run_install | default(true) | bool
 
-- name: "{{ projectName }} - nvm pnpm install failed"
+- name: "{{ projectName }} - native: {{ node_package_manager }} install failed"
   ansible.builtin.fail:
     msg: |
-      {{ projectName }} pnpm install failed (rc={{ pnpm_nvm_install_result.rc }})
+      {{ projectName }} {{ node_package_manager }} install failed (rc={{ node_nvm_install_result.rc }})
       cwd: {{ codePath }}
 
       --- stdout ---
-      {{ pnpm_nvm_install_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+      {{ node_nvm_install_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
 
       --- stderr ---
-      {{ pnpm_nvm_install_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+      {{ node_nvm_install_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
   when:
-    - pnpm_run_install | default(true) | bool
-    - pnpm_nvm_install_result.rc | default(0) != 0
+    - node_run_install | default(true) | bool
+    - node_nvm_install_result.rc | default(0) != 0
 
-- name: "{{ projectName }} - nvm pnpm command {{ pnpm_nvm_command | default('') }} at {{ codePath }}"
+- name: "{{ projectName }} - native: {{ node_command | default('') }} at {{ codePath }}"
   ansible.builtin.shell: |
     set -e
     unset NPM_CONFIG_PREFIX
     export CI=1
     # shellcheck source=/dev/null
     . "{{ role_path }}/files/nvm_init.sh"
-    nvm install {{ pnpm_node_version }}
-    nvm use {{ pnpm_node_version }}
-    corepack enable
-    corepack prepare pnpm@{{ pnpm_builder_version }} --activate
-    {{ pnpm_nvm_cross_platform_shell | default('') }}
+    nvm install {{ node_version }}
+    nvm use {{ node_version }}
+    {{ node_pm_cfg.activate_shell }}
+    {{ node_pm_cross_platform_shell | default('') }}
     cd "{{ codePath }}"
-    {{ pnpm_nvm_command }}
-  vars:
-    pnpm_nvm_cross_platform_shell: >-
-      {{
-        'eval "$(bash "' + role_path + '/files/npm_cross_platform_env.sh" "' + (docker_target_platform | default('linux/amd64')) + '")"'
-        if pnpm_nvm_apply_cross_platform | default(false) | bool
-        else ''
-      }}
+    {{ node_command }}
   args:
     executable: /bin/bash
   environment:
@@ -83,26 +67,26 @@
   no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
-  register: pnpm_nvm_command_result
+  register: node_nvm_command_result
   failed_when: false
-  changed_when: pnpm_nvm_command_result.rc == 0
+  changed_when: node_nvm_command_result.rc == 0
   when:
-    - pnpm_nvm_command is defined
-    - pnpm_nvm_command | length > 0
+    - node_command is defined
+    - node_command | length > 0
 
-- name: "{{ projectName }} - nvm pnpm command failed"
+- name: "{{ projectName }} - native: command failed"
   ansible.builtin.fail:
     msg: |
-      {{ projectName }} pnpm command failed (rc={{ pnpm_nvm_command_result.rc }})
-      command: {{ pnpm_nvm_command }}
+      {{ projectName }} command failed (rc={{ node_nvm_command_result.rc }})
+      command: {{ node_command }}
       cwd: {{ codePath }}
 
       --- stdout ---
-      {{ pnpm_nvm_command_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+      {{ node_nvm_command_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
 
       --- stderr ---
-      {{ pnpm_nvm_command_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+      {{ node_nvm_command_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
   when:
-    - pnpm_nvm_command is defined
-    - pnpm_nvm_command | length > 0
-    - pnpm_nvm_command_result.rc | default(0) != 0
+    - node_command is defined
+    - node_command | length > 0
+    - node_nvm_command_result.rc | default(0) != 0

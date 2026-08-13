@@ -1,0 +1,5 @@
+---
+# Convenience: force pnpm then ensure builder image.
+- ansible.builtin.include_tasks: ensure_builder_image.yml
+  vars:
+    node_package_manager: pnpm

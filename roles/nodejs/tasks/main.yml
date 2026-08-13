@@ -1,7 +1,9 @@
 ---
-# Placeholder so the role is valid; use tasks_from (nvm_exec, docker_*, ensure_builder_image).
+# kristijorgji.devops.nodejs — use tasks_from (see README). Prefer pnpm_* or generics + node_package_manager.
 - name: kristijorgji.devops.nodejs - use tasks_from
   ansible.builtin.debug:
     msg: >-
-      Include this role with tasks_from set to nvm_exec, ensure_builder_image,
-      docker_install, or docker_exec.
+      Include with tasks_from one of: pnpm_build, pnpm_nvm_exec,
+      pnpm_ensure_builder_image, pnpm_docker_install, pnpm_docker_exec
+      (generics: nvm_exec, ensure_builder_image, docker_install, docker_exec
+      with node_package_manager pnpm|yarn|npm).

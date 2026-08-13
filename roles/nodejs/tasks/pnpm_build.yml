@@ -1,0 +1,24 @@
+---
+# Convenience: native or docker pnpm install + optional node_command.
+# Vars:
+#   node_build_executor: native | docker (default native)
+#   node_command (set for both paths when either may run)
+# Pass-through: node_run_install, versions, token, docker volumes, cross-platform flags.
+
+- name: "nodejs - validate node_build_executor"
+  ansible.builtin.assert:
+    that:
+      - node_build_executor in ['native', 'docker']
+    fail_msg: >-
+      node_build_executor must be native or docker; got {{ node_build_executor | default('(undefined)') }}.
+
+- name: "{{ projectName }} - native: pnpm install and build"
+  when: node_build_executor == 'native'
+  ansible.builtin.include_tasks: pnpm_nvm_exec.yml
+
+- name: "{{ projectName }} - docker: pnpm install and build"
+  when: node_build_executor == 'docker'
+  block:
+    - ansible.builtin.include_tasks: pnpm_ensure_builder_image.yml
+    - ansible.builtin.include_tasks: pnpm_docker_install.yml
+    - ansible.builtin.include_tasks: pnpm_docker_exec.yml

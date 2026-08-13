@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Pre-commit hook delegating script
+exec 1>&2
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOKS_DIR="$HOOK_DIR/pre-commit.d"
+
+if [ ! -d "$HOOKS_DIR" ]; then
+	echo "ERROR: pre-commit.d directory not found: $HOOKS_DIR"
+	exit 1
+fi
+
+for hook in "$HOOKS_DIR"/*; do
+	[ ! -f "$hook" ] && continue
+	[ ! -x "$hook" ] && continue
+	if ! "$hook"; then
+		echo "Pre-commit hook failed: $(basename "$hook")"
+		exit 1
+	fi
+done
+
+exit 0

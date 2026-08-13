@@ -17,30 +17,62 @@ collections:
 ansible-galaxy collection install -r collections/requirements.yml
 ```
 
+## Lint / format / hooks
+
+```shell
+./scripts/init.sh          # git config core.hooksPath=./git_hooks
+make lint                  # ansible-lint + markdownlint
+make fix                   # prettier YAML/MD + markdownlint --fix
+make verify-hooks
+```
+
+Requires Docker for lint/fix targets and pre-commit hooks.
+
 ## Roles
 
-| Role | Purpose |
-| --- | --- |
-| `kristijorgji.devops.nodejs` | Native nvm + pnpm install/build, optional Docker builder |
-| `kristijorgji.devops.transfer` | Rsync a local tree to a remote server path |
-
-More roles can be added under `roles/` in later versions without renaming the collection.
+| Role                           | Purpose                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `kristijorgji.devops.nodejs`   | nvm/Docker builds for pnpm/yarn/npm; `pnpm_build` convenience |
+| `kristijorgji.devops.transfer` | Rsync a local tree to a remote server path                    |
 
 ## Quick examples
 
-### Native pnpm install + build
+### Preferred: `pnpm_build` (native or docker)
+
+```yaml
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.nodejs
+    tasks_from: pnpm_build
+    apply:
+      delegate_to: "{{ delegate_build_to_host }}"
+      become: "{{ become_in_build_machine }}"
+  vars:
+    projectName: my_app
+    codePath: /path/to/app
+    delegate_build_to_host: 127.0.0.1
+    dockerBuilderImage: "pnpm-builder:22.16.0"
+    node_build_executor: native
+    node_command: "pnpm build"
+```
+
+### Generic yarn (native)
 
 ```yaml
 - ansible.builtin.include_role:
     name: kristijorgji.devops.nodejs
     tasks_from: nvm_exec
   vars:
-    projectName: my_app
-    codePath: /path/to/app
-    delegate_build_to_host: 127.0.0.1
-    pnpm_node_version: "22.16.0"
-    pnpm_builder_version: "9.15.4"
-    pnpm_nvm_command: "pnpm build"
+    node_package_manager: yarn
+    node_command: "yarn build"
+    # ... projectName, codePath, delegate_build_to_host, node_version
+```
+
+### Yarn install script (Mac/Ubuntu)
+
+```shell
+S_NODE_VERSION=22.16.0 bash \
+  collections/ansible_collections/kristijorgji/devops/roles/nodejs/files/yarn_install.sh \
+  linux/amd64
 ```
 
 ### Rsync build output to a server

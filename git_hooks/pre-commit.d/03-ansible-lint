@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Lint collection with ansible-lint when YAML/role files are staged (Docker).
+exec 1>&2
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(yml|yaml)$|^galaxy\.yml$|^roles/' || true)
+if [ -z "$STAGED" ]; then
+	exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+	echo "WARNING: Docker not found. Skipping ansible-lint check."
+	echo "Install Docker or run: make lint-ansible"
+	exit 0
+fi
+
+if ! docker run --rm -v "$REPO_ROOT:/code" -w /code pipelinecomponents/ansible-lint:latest ansible-lint -v .; then
+	echo ""
+	echo "ansible-lint failed. Fix the errors above or run:"
+	echo "  make lint-ansible"
+	exit 1
+fi
+
+exit 0

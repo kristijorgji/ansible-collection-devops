@@ -1,0 +1,4 @@
+---
+# Use ansible-lint defaults (includes prettier-compatible yamllint).
+# Exclude nothing essential; collection is small.
+profile: basic

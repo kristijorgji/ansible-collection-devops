@@ -1,0 +1,5 @@
+---
+# Convenience: force pnpm then docker exec.
+- ansible.builtin.include_tasks: docker_exec.yml
+  vars:
+    node_package_manager: pnpm

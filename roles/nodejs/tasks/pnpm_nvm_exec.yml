@@ -1,0 +1,5 @@
+---
+# Convenience: force pnpm then native nvm install/command.
+- ansible.builtin.include_tasks: nvm_exec.yml
+  vars:
+    node_package_manager: pnpm

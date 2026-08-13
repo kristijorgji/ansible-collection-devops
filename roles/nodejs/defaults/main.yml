@@ -1,10 +1,51 @@
 ---
 # Defaults for kristijorgji.devops.nodejs (override per play/role include).
-pnpm_node_version: "22.16.0"
-pnpm_builder_version: "9.15.4"
-pnpm_build_store_path: "{{ lookup('env', 'HOME') }}/.pnpm-store"
-pnpm_run_install: true
-pnpm_nvm_apply_cross_platform: false
-pnpm_ensure_builder_run_once: true
+node_version: "22.16.0"
+# corepack package-manager version (pnpm / yarn); unused for npm.
+node_pm_version: "9.15.4"
+node_package_manager: pnpm
+node_build_store_path: "~/pnpm-store"
+node_run_install: true
+node_apply_cross_platform: false
+node_ensure_builder_run_once: true
+node_command: ""
+node_install_args: ""
+node_docker_extra_volume_flags: ""
+# Convenience orchestrator (pnpm_build / node_build): native | docker
+node_build_executor: native
 # Optional private registry token (passed as NODE_AUTH_TOKEN; leave empty if unused).
 github_packages_token: ""
+
+node_package_managers:
+  yarn:
+    host_cache_dir: "~/yarn-cache"
+    container_cache_dir: /yarn-cache
+    lockfile: yarn.lock
+    cache_env:
+      YARN_CACHE_FOLDER: /yarn-cache
+    install_args: "install --frozen-lockfile --prefer-offline --network-timeout 100000"
+    activate_shell: >-
+      corepack enable && corepack prepare yarn@{{ node_pm_version }} --activate
+    dockerfile_run: >-
+      RUN corepack enable && corepack prepare yarn@{{ node_pm_version }} --activate
+  pnpm:
+    host_cache_dir: "{{ node_build_store_path }}"
+    container_cache_dir: /pnpm-store
+    lockfile: pnpm-lock.yaml
+    cache_env:
+      PNPM_STORE_DIR: /pnpm-store
+      CI: "1"
+    install_args: "install --frozen-lockfile --prefer-offline"
+    activate_shell: >-
+      corepack enable && corepack prepare pnpm@{{ node_pm_version }} --activate
+    dockerfile_run: >-
+      RUN corepack enable && corepack prepare pnpm@{{ node_pm_version }} --activate
+  npm:
+    host_cache_dir: "~/.npm"
+    container_cache_dir: /npm-cache
+    lockfile: package-lock.json
+    cache_env:
+      npm_config_cache: /npm-cache
+    install_args: "ci --prefer-offline"
+    activate_shell: ""
+    dockerfile_run: ""

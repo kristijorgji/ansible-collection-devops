@@ -1,31 +1,33 @@
 ---
-# Dockerized pnpm install with shared store mount.
+# Dockerized package-manager install with shared cache mount.
+# Prefer tasks_from: pnpm_docker_install from consumers.
 # Requires: projectName, codePath, dockerBuilderImage, delegate_build_to_host
 
-- name: "{{ projectName }} - ensure pnpm store directory exists"
+- ansible.builtin.import_tasks: pm_resolve.yml
+
+- name: "{{ projectName }} - docker: ensure {{ node_package_manager }} cache dir exists"
   ansible.builtin.file:
-    path: "{{ pnpm_build_store_path }}"
+    path: "{{ node_pm_host_cache_dir }}"
     state: directory
     mode: "0755"
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
-  when: pnpm_run_install | default(true) | bool
+  when: node_run_install | default(true) | bool
 
-- name: "{{ projectName }} - docker pnpm install at {{ codePath }}"
+- name: "{{ projectName }} - docker: {{ node_package_manager }} install at {{ codePath }}"
   ansible.builtin.shell: >-
     docker container run --rm --entrypoint='' -u root
     --platform {{ docker_target_platform | default('linux/amd64') }}
     -v {{ codePath }}:/usr/src/app
-    -v {{ pnpm_build_store_path }}:/pnpm-store
-    -e PNPM_STORE_DIR=/pnpm-store
-    -e CI=1
+    -v {{ node_pm_host_cache_dir }}:{{ node_pm_cfg.container_cache_dir }}
+    {{ node_pm_docker_cache_env_args }}
     -e NODE_AUTH_TOKEN
     -w /usr/src/app
     {{ dockerBuilderImage }}
-    pnpm install --frozen-lockfile --prefer-offline {{ pnpm_docker_install_args | default('') }}
+    {{ node_package_manager }} {{ node_pm_install_args_effective }}
   environment:
     NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
   no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
-  when: pnpm_run_install | default(true) | bool
+  when: node_run_install | default(true) | bool

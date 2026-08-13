@@ -1,0 +1,5 @@
+---
+# Convenience: force pnpm then docker install.
+- ansible.builtin.include_tasks: docker_install.yml
+  vars:
+    node_package_manager: pnpm

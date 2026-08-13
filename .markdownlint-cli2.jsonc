@@ -1,0 +1,19 @@
+{
+  "gitignore": true,
+  "config": {
+    "default": true,
+    "MD033": false,
+    "MD001": true,
+    "MD003": { "style": "atx" },
+    "MD013": {
+      "line_length": 120,
+      "code_blocks": false,
+      "tables": false
+    },
+    "MD004": { "style": "dash" },
+    "MD049": { "style": "consistent" },
+    "MD046": { "style": "fenced" },
+    "MD024": { "siblings_only": true },
+    "MD029": { "style": "ordered" }
+  }
+}

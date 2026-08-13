@@ -1,32 +1,70 @@
 # Role: `kristijorgji.devops.nodejs`
 
-Node.js build helpers via **nvm + pnpm** (default) or **Docker**.
+Node.js build helpers via **nvm** or **Docker**, for **pnpm / yarn / npm**.
+
+Prefer **`pnpm_*`** entrypoints when using pnpm (they only set `node_package_manager: pnpm`).
+Call generics with `node_package_manager: yarn|npm|pnpm` for other managers.
 
 ## Task files (`tasks_from`)
 
-| File | Purpose |
-| --- | --- |
-| `nvm_exec` | Native install + optional `pnpm_nvm_command` |
-| `ensure_builder_image` | Build `pnpm-builder:<node>` once |
-| `docker_install` | `pnpm install` in Docker |
-| `docker_exec` | Run `pnpm_docker_command` in Docker |
+| File                                             | Purpose                                                 |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| **`pnpm_build`**                                 | Convenience: `node_build_executor` `native` \| `docker` |
+| `pnpm_nvm_exec`                                  | Native install + optional `node_command` (pnpm)         |
+| `pnpm_ensure_builder_image`                      | Build builder image once (pnpm)                         |
+| `pnpm_docker_install`                            | Install in Docker (pnpm)                                |
+| `pnpm_docker_exec`                               | Run `node_command` in Docker (pnpm)                     |
+| `nvm_exec` / `docker_*` / `ensure_builder_image` | Same primitives; set `node_package_manager`             |
+
+Task log names use greppable **`native:`** / **`docker:`** prefixes.
+
+## Scripts (`files/`)
+
+| Script                      | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `nvm_init.sh`               | Source nvm (Homebrew macOS or `~/.nvm` / `$NVM_DIR` on Linux) |
+| `npm_cross_platform_env.sh` | Emit `npm_config_*` for `linux/*` and optional `windows/*`    |
+| `yarn_install.sh`           | Shell helper: `S_NODE_VERSION` + optional platform/`prod`     |
+
+Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or Docker.
 
 ## Important variables
 
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `projectName` | — | Required (log prefix) |
-| `codePath` | — | App path on build host |
-| `delegate_build_to_host` | — | e.g. `127.0.0.1` |
-| `pnpm_node_version` | `22.16.0` | nvm / Docker Node |
-| `pnpm_builder_version` | `9.15.4` | pnpm via corepack |
-| `pnpm_build_store_path` | `~/.pnpm-store` | Host store |
-| `pnpm_nvm_command` | — | e.g. `pnpm build` |
-| `pnpm_nvm_apply_cross_platform` | `false` | Set `npm_config_*` for linux targets |
-| `github_packages_token` | `""` | Optional → `NODE_AUTH_TOKEN` |
-| `dockerBuilderImage` | — | e.g. `pnpm-builder:22.16.0` |
-| `docker_target_platform` | `linux/amd64` | Docker / cross-platform |
+| Variable                         | Default        | Notes                                      |
+| -------------------------------- | -------------- | ------------------------------------------ |
+| `projectName`                    | —              | Required (log prefix)                      |
+| `codePath`                       | —              | App path on build host                     |
+| `delegate_build_to_host`         | —              | e.g. `127.0.0.1`                           |
+| `become_in_build_machine`        | `false`        | Privilege escalation on build host         |
+| `node_package_manager`           | `pnpm`         | `pnpm` \| `yarn` \| `npm`                  |
+| `node_build_executor`            | `native`       | For `pnpm_build` only                      |
+| `node_version`                   | `22.16.0`      | nvm / Docker Node                          |
+| `node_pm_version`                | `9.15.4`       | corepack pnpm/yarn version                 |
+| `node_build_store_path`          | `~/pnpm-store` | Host cache (tilde expands on build host)   |
+| `node_command`                   | `""`           | e.g. `pnpm build`                          |
+| `node_run_install`               | `true`         | Skip install when false                    |
+| `node_install_args`              | `""`           | Override map `install_args` when non-empty |
+| `node_apply_cross_platform`      | `false`        | Set `npm_config_*` for linux targets       |
+| `node_docker_extra_volume_flags` | `""`           | Extra `-v` for docker exec                 |
+| `github_packages_token`          | `""`           | Optional → `NODE_AUTH_TOKEN`               |
+| `dockerBuilderImage`             | —              | e.g. `pnpm-builder:22.16.0`                |
+| `docker_target_platform`         | `linux/amd64`  | Docker / cross-platform                    |
 
-## nvm on macOS and Linux
+## Example: `pnpm_build`
 
-`files/nvm_init.sh` loads Homebrew nvm (`/opt/homebrew` or `/usr/local`) then `$HOME/.nvm`.
+```yaml
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.nodejs
+    tasks_from: pnpm_build
+    apply:
+      delegate_to: "{{ delegate_build_to_host }}"
+      become: "{{ become_in_build_machine }}"
+  vars:
+    projectName: my_app
+    codePath: /path/to/app
+    delegate_build_to_host: 127.0.0.1
+    dockerBuilderImage: "pnpm-builder:22.16.0"
+    node_build_executor: native
+    node_command: "pnpm build"
+    node_build_store_path: "~/pnpm-store"
+```

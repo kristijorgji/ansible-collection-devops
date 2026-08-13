@@ -2,6 +2,8 @@
 # Emit shell exports so npm, yarn, and pnpm fetch optional native deps for the
 # deploy target platform (e.g. linux x64 binaries when installing on macOS).
 # Usage: eval "$(bash npm_cross_platform_env.sh linux/amd64)" before install/build.
+# Empty platform → no exports (host-native). Mac/Ubuntu controllers are primary;
+# windows/* is best-effort for targeting Windows artefacts from Unix.
 set -euo pipefail
 
 platform="${1:-}"
@@ -17,6 +19,14 @@ case "$platform" in
   linux/arm64)
     echo "export npm_config_arch=arm64"
     echo "export npm_config_platform=linux"
+    ;;
+  windows/amd64)
+    echo "export npm_config_arch=x64"
+    echo "export npm_config_platform=win32"
+    ;;
+  windows/arm64)
+    echo "export npm_config_arch=arm64"
+    echo "export npm_config_platform=win32"
     ;;
   *)
     echo "unknown platform $platform" >&2

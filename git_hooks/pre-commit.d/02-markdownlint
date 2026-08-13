@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Lint staged markdown files with markdownlint-cli2 (Docker).
+exec 1>&2
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+
+STAGED_MD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.md$' || true)
+if [ -z "$STAGED_MD_FILES" ]; then
+	exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+	echo "WARNING: Docker not found. Skipping markdownlint check."
+	echo "Install Docker or run: make lint-markdown"
+	exit 0
+fi
+
+# shellcheck disable=SC2086
+if ! docker run --rm -v "$REPO_ROOT:/data" -w /data davidanson/markdownlint-cli2:latest $STAGED_MD_FILES; then
+	echo ""
+	echo "Markdown linting failed. Fix the errors above or run:"
+	echo "  make lint-markdown"
+	exit 1
+fi
+
+exit 0

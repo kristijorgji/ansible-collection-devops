@@ -1,21 +1,24 @@
 ---
-# Build a local Docker image with Node + pnpm preinstalled (skips corepack each run).
-# Requires: dockerBuilderImage, pnpm_node_version, pnpm_builder_version, delegate_build_to_host
+# Build a local Docker image with Node + package manager preinstalled.
+# Prefer tasks_from: pnpm_ensure_builder_image from consumers.
+# Requires: dockerBuilderImage, node_version, delegate_build_to_host, node_package_manager
 
-- name: "check if pnpm builder image {{ dockerBuilderImage }} exists"
+- ansible.builtin.import_tasks: pm_resolve.yml
+
+- name: "{{ projectName | default('nodejs') }} - docker: check if builder image {{ dockerBuilderImage }} exists"
   ansible.builtin.command: docker image inspect {{ dockerBuilderImage }}
-  register: pnpm_builder_image_inspect
+  register: node_builder_image_inspect
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
   changed_when: false
   failed_when: false
-  run_once: "{{ pnpm_ensure_builder_run_once | default(true) | bool }}"
+  run_once: "{{ node_ensure_builder_run_once | default(true) | bool }}"
 
-- name: "ensure pnpm builder image {{ dockerBuilderImage }} exists"
+- name: "{{ projectName | default('nodejs') }} - docker: ensure builder image {{ dockerBuilderImage }} exists"
   ansible.builtin.shell: |
-    echo "FROM node:{{ pnpm_node_version }}-slim
-    RUN corepack enable && corepack prepare pnpm@{{ pnpm_builder_version }} --activate" | docker build --platform {{ docker_target_platform | default('linux/amd64') }} -t {{ dockerBuilderImage }} -
+    echo "FROM node:{{ node_version }}-slim
+    {{ node_pm_cfg.dockerfile_run }}" | docker build --platform {{ docker_target_platform | default('linux/amd64') }} -t {{ dockerBuilderImage }} -
   delegate_to: "{{ delegate_build_to_host }}"
   become: "{{ become_in_build_machine | default(false) }}"
-  when: pnpm_builder_image_inspect.rc != 0
-  run_once: "{{ pnpm_ensure_builder_run_once | default(true) | bool }}"
+  when: node_builder_image_inspect.rc != 0
+  run_once: "{{ node_ensure_builder_run_once | default(true) | bool }}"
