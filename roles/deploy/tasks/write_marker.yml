@@ -1,0 +1,14 @@
+---
+# Write .ansible-deploy-commit after a successful build/transfer.
+# Prefer tasks_from: write_marker from consumers.
+# Requires: commitHash, serverCodePath, projectName
+# Optional: deploy_commit_marker_dir (default serverCodePath)
+
+- name: "{{ projectName }} - write deploy commit marker at {{ deploy_commit_marker_dir | default(serverCodePath) }}"
+  ansible.builtin.copy:
+    dest: "{{ deploy_commit_marker_dir | default(serverCodePath) }}/.ansible-deploy-commit"
+    content: "{{ commitHash }}\n"
+    mode: "0644"
+  when:
+    - commitHash is defined
+    - serverCodePath is defined

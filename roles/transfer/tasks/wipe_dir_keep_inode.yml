@@ -1,0 +1,18 @@
+---
+# Clear a site's server code directory without removing the directory itself.
+# Prefer tasks_from: wipe_dir_keep_inode from consumers.
+# Requires: projectName, serverCodePath
+# Bind-mounts (e.g. /src/inventory-management) break if the directory inode is deleted.
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }} exists"
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- name: "{{ projectName }} - clear server code path contents (preserve bind-mount inode)"
+  ansible.builtin.shell: find "{{ serverCodePath }}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  args:
+    executable: /bin/bash
+  changed_when: true

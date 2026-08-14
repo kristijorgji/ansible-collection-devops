@@ -1,0 +1,14 @@
+---
+# Convenience: force pnpm then server-side nvm production install.
+# Prefer tasks_from: pnpm_server_install from consumers after rsync.
+# Requires: projectName, serverCodePath
+# Optional: pnpm_run_server_install, pnpm_server_install_production, node_command
+
+- ansible.builtin.include_tasks: nvm_server_exec.yml
+  vars:
+    node_package_manager: pnpm
+    node_run_install: "{{ pnpm_run_server_install | default(true) }}"
+    node_install_args: >-
+      install
+      {{ '--production' if pnpm_server_install_production | default(true) | bool else '' }}
+      --ignore-scripts --frozen-lockfile --prefer-offline --reporter=default

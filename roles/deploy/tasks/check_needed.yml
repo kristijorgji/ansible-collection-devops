@@ -1,0 +1,121 @@
+---
+# Decide whether clone / build / transfer should run (deploy skip gate).
+#
+# Flow:
+#   1. git ls-remote → target_commit (remote branch HEAD)
+#   2. slurp server_path/.ansible-deploy-commit → deployed_commit
+#   3. (optional) compare lockfile checksum on server vs build host
+#   4. build_needed = force_deploy OR commit differs OR lockfile differs
+#   5. Set deploy_build_needed (or deploy_check_fact_name for fitx365)
+#   6. When build not needed: set commitHash + git_result.changed: false
+#
+# Prefer tasks_from: check_needed from consumers.
+# Requires: deploy_check_git_repo_url, deploy_check_git_branch,
+#           deploy_check_server_code_path
+# Optional: deploy_check_build_code_path, deploy_check_build_delegate,
+#           deploy_check_lockfile, deploy_check_fact_name, deploy_check_label,
+#           force_deploy (extra var, e.g. force_deploy=1)
+# Build-host stat uses become_in_build_machine; never become on localhost.
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - resolve remote commit
+  ansible.builtin.command: >-
+    git ls-remote {{ deploy_check_git_repo_url }}
+    refs/heads/{{ deploy_check_git_branch }}
+  register: deploy_check_ls_remote
+  delegate_to: "{{ deploy_check_build_delegate | default(omit) }}"
+  become: >-
+    {{
+      (become_in_build_machine | default(false))
+      if (deploy_check_build_delegate | default('127.0.0.1'))
+         not in ['127.0.0.1', 'localhost']
+      else false
+    }}
+  changed_when: false
+  failed_when: >-
+    deploy_check_ls_remote.rc != 0
+    or deploy_check_ls_remote.stdout | length == 0
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - set target commit
+  ansible.builtin.set_fact:
+    deploy_check_target_commit: "{{ deploy_check_ls_remote.stdout.split()[0] }}"
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - read deploy marker
+  ansible.builtin.slurp:
+    src: "{{ deploy_check_server_code_path }}/.ansible-deploy-commit"
+  register: deploy_check_marker_slurp
+  failed_when: false
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - set deployed commit fact
+  ansible.builtin.set_fact:
+    deploy_check_deployed_commit: >-
+      {{
+        (deploy_check_marker_slurp.content | b64decode | trim)
+        if deploy_check_marker_slurp.content is defined
+        else ''
+      }}
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - stat server lockfile
+  ansible.builtin.stat:
+    path: "{{ deploy_check_server_code_path }}/{{ deploy_check_lockfile }}"
+    checksum_algorithm: sha1
+  register: deploy_check_server_lockfile
+  when: deploy_check_lockfile is defined and deploy_check_lockfile | length > 0
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - stat build lockfile
+  ansible.builtin.stat:
+    path: "{{ deploy_check_build_code_path }}/{{ deploy_check_lockfile }}"
+    checksum_algorithm: sha1
+  register: deploy_check_build_lockfile
+  delegate_to: "{{ deploy_check_build_delegate | default('127.0.0.1') }}"
+  become: >-
+    {{
+      (become_in_build_machine | default(false))
+      if (deploy_check_build_delegate | default('127.0.0.1'))
+         not in ['127.0.0.1', 'localhost']
+      else false
+    }}
+  when:
+    - deploy_check_lockfile is defined and deploy_check_lockfile | length > 0
+    - deploy_check_build_code_path is defined
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - decide build needed
+  ansible.builtin.set_fact:
+    deploy_check_build_needed_computed: >-
+      {{
+        force_deploy is defined
+        or (
+          deploy_check_deployed_commit | default('')
+          != deploy_check_target_commit
+        )
+        or (
+          deploy_check_lockfile is defined
+          and deploy_check_lockfile | length > 0
+          and (
+            not deploy_check_server_lockfile.stat.exists | default(false)
+            or not deploy_check_build_lockfile.stat.exists | default(false)
+            or deploy_check_server_lockfile.stat.checksum
+               != deploy_check_build_lockfile.stat.checksum
+          )
+        )
+      }}
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - set build needed fact
+  ansible.builtin.set_fact:
+    "{{ deploy_check_fact_name | default('deploy_build_needed') }}": >-
+      {{ deploy_check_build_needed_computed | bool }}
+
+- name: >-
+    {{ deploy_check_label | default(projectName) }} - set skip-build facts
+  ansible.builtin.set_fact:
+    commitHash: "{{ deploy_check_target_commit }}"
+    git_result:
+      changed: false
+  when: not deploy_check_build_needed_computed | bool

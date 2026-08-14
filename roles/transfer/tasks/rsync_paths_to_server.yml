@@ -1,0 +1,40 @@
+---
+# Sync a monorepo checkout from a local build host to serverCodePath (partial tree merge).
+# Prefer tasks_from: rsync_paths_to_server from consumers.
+# Requires: projectName, monorepo_local_code_path, serverCodePath
+# Single tree: monorepo_sync_src (path relative to repo root)
+# Multi tree: monorepo_sync_paths (list of paths relative to repo root)
+# Optional: monorepo_deploy_marker_path (directory for .ansible-deploy-commit)
+
+- name: "{{ projectName }} - resolve monorepo sync paths"
+  ansible.builtin.set_fact:
+    monorepo_sync_archive_paths: >-
+      {{
+        monorepo_sync_paths
+        if monorepo_sync_paths is defined
+        else [monorepo_sync_src]
+      }}
+
+- name: "{{ projectName }} - rsync partial paths to server"
+  ansible.posix.synchronize:
+    src: "{{ monorepo_local_code_path }}/{{ item }}"
+    dest: "{{ serverCodePath }}/{{ item }}"
+    mode: push
+    delete: true
+    recursive: true
+  loop: "{{ monorepo_sync_archive_paths }}"
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }} is owned by app user"
+  become: true
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}"
+    state: directory
+    recurse: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.deploy
+    tasks_from: write_marker
+  vars:
+    deploy_commit_marker_dir: "{{ monorepo_deploy_marker_path | default(serverCodePath) }}"

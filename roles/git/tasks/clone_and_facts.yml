@@ -1,0 +1,85 @@
+---
+# Shallow clone + commitHash. Wipes stale checkouts; optional bind-mount-safe wipe.
+# Prefer tasks_from: clone_and_facts from consumers.
+# Requires: projectName, gitBranch, codePath, git_repo_url, remote_github_private_key_path
+# Optional: preserve_code_path_mount, become_in_build_machine, skip_git, env
+
+- name: "{{ projectName }} - check build checkout path"
+  ansible.builtin.stat:
+    path: "{{ codePath }}"
+  register: git_clone_dest
+  when: env != "local" and skip_git is not defined
+  tags:
+    - clone
+
+- name: "{{ projectName }} - check for git metadata at checkout path"
+  ansible.builtin.stat:
+    path: "{{ codePath }}/.git"
+  register: git_clone_dest_git
+  when:
+    - env != "local" and skip_git is not defined
+    - git_clone_dest.stat.isdir | default(false)
+  tags:
+    - clone
+
+- name: "{{ projectName }} - clear stale checkout in place (preserve kj_proxy bind mount)"
+  ansible.builtin.include_role:
+    name: kristijorgji.devops.transfer
+    tasks_from: wipe_dir_keep_inode
+    apply:
+      become: "{{ become_in_build_machine | default(false) }}"
+  vars:
+    serverCodePath: "{{ codePath }}"
+  when:
+    - env != "local" and skip_git is not defined
+    - git_clone_dest.stat.isdir | default(false)
+    - not git_clone_dest_git.stat.exists | default(false)
+    - preserve_code_path_mount | default(false) | bool
+  tags:
+    - clone
+
+- name: "{{ projectName }} - remove stale checkout (pruned or partial, no .git)"
+  ansible.builtin.file:
+    path: "{{ codePath }}"
+    state: absent
+  become: "{{ become_in_build_machine | default(false) }}"
+  when:
+    - env != "local" and skip_git is not defined
+    - git_clone_dest.stat.isdir | default(false)
+    - not git_clone_dest_git.stat.exists | default(false)
+    - not (preserve_code_path_mount | default(false) | bool)
+  tags:
+    - clone
+
+- name: "{{ projectName }} - clone branch {{ gitBranch }} at {{ codePath }}"
+  ansible.builtin.git:
+    repo: "{{ git_repo_url }}"
+    key_file: "{{ remote_github_private_key_path }}"
+    dest: "{{ codePath }}"
+    depth: 1
+    version: "{{ gitBranch }}"
+    force: true
+  register: git_result
+  when: env != "local" and skip_git is not defined
+  tags:
+    - clone
+
+- name: "{{ projectName }} - git result"
+  ansible.builtin.debug:
+    var: git_result
+  tags:
+    - debug
+
+- name: "{{ projectName }} - Get Git Commit Hash"
+  ansible.builtin.shell: git rev-parse --verify HEAD
+  args:
+    chdir: "{{ codePath }}"
+  register: commitHashResult
+  tags:
+    - git-facts
+
+- name: "{{ projectName }} - set git hash fact"
+  ansible.builtin.set_fact:
+    commitHash: "{{ commitHashResult.stdout }}"
+  tags:
+    - git-facts

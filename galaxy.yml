@@ -1,13 +1,13 @@
 ---
 namespace: kristijorgji
 name: devops
-version: 0.1.2
+version: 0.2.0
 readme: README.md
 authors:
   - Kristi Jorgji
 description: >
-  Reusable Ansible roles for devops build and transfer helpers
-  (Node/pnpm via nvm or Docker, rsync artefact sync). Extensible with more roles.
+  Reusable Ansible roles for devops build, transfer, deploy skip, and git clone
+  helpers (Node via nvm or Docker, rsync, commit markers).
 license:
   - MIT
 tags:
