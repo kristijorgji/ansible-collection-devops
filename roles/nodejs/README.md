@@ -35,7 +35,9 @@ Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or
 | `projectName`                    | —              | Required (log prefix)                      |
 | `codePath`                       | —              | App path on build host                     |
 | `delegate_build_to_host`         | —              | e.g. `127.0.0.1`                           |
-| `become_in_build_machine`        | `false`        | Privilege escalation on build host         |
+| `become_in_build_machine`        | `false`        | Play/site policy: allow become on remote   |
+| `node_become`                    | unset          | Optional override of play policy           |
+| `node_become_effective`          | computed       | Policy **and** host ≠ `127.0.0.1`          |
 | `node_package_manager`           | `pnpm`         | `pnpm` \| `yarn` \| `npm`                  |
 | `node_build_executor`            | `native`       | For `pnpm_build` only                      |
 | `node_version`                   | `22.16.0`      | nvm / Docker Node                          |
@@ -50,6 +52,11 @@ Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or
 | `dockerBuilderImage`             | —              | e.g. `pnpm-builder:22.16.0`                |
 | `docker_target_platform`         | `linux/amd64`  | Docker / cross-platform                    |
 
+Role tasks use `node_become_effective` (never escalate on localhost). Pass play
+`become_in_build_machine` unchanged — do **not** rebind it in `include_role`
+`vars` to an expression that references itself (Ansible recursive-loop error).
+Optional `node_become` overrides the play policy without shadowing that name.
+
 ## Example: `pnpm_build`
 
 ```yaml
@@ -58,7 +65,6 @@ Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or
     tasks_from: pnpm_build
     apply:
       delegate_to: "{{ delegate_build_to_host }}"
-      become: "{{ become_in_build_machine }}"
   vars:
     projectName: my_app
     codePath: /path/to/app
@@ -67,4 +73,5 @@ Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or
     node_build_executor: native
     node_command: "pnpm build"
     node_build_store_path: "~/pnpm-store"
+    # become_in_build_machine from play/site; localhost stay false via role
 ```

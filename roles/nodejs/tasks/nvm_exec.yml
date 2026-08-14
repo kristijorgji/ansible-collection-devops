@@ -25,7 +25,7 @@
     NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
   no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
   delegate_to: "{{ delegate_build_to_host }}"
-  become: "{{ become_in_build_machine | default(false) }}"
+  become: "{{ node_become_effective }}"
   register: node_nvm_install_result
   failed_when: false
   changed_when: node_nvm_install_result.rc == 0
@@ -66,7 +66,7 @@
     NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
   no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
   delegate_to: "{{ delegate_build_to_host }}"
-  become: "{{ become_in_build_machine | default(false) }}"
+  become: "{{ node_become_effective }}"
   register: node_nvm_command_result
   failed_when: false
   changed_when: node_nvm_command_result.rc == 0

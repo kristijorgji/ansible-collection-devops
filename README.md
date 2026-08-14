@@ -10,7 +10,7 @@ Install the whole collection; call only the roles you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.1.1
+    version: v0.1.2
 ```
 
 ```shell
@@ -45,7 +45,6 @@ Requires Docker for lint/fix targets and pre-commit hooks.
     tasks_from: pnpm_build
     apply:
       delegate_to: "{{ delegate_build_to_host }}"
-      become: "{{ become_in_build_machine }}"
   vars:
     projectName: my_app
     codePath: /path/to/app
@@ -54,6 +53,10 @@ Requires Docker for lint/fix targets and pre-commit hooks.
     node_build_executor: native
     node_command: "pnpm build"
 ```
+
+Privilege escalation uses play/site `become_in_build_machine` (or optional
+`node_become`) and is always off when `delegate_build_to_host` is `127.0.0.1`.
+Do not reassign `become_in_build_machine` inside `include_role` vars.
 
 ### Generic yarn (native)
 

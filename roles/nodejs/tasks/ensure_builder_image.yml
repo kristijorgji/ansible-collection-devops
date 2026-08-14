@@ -9,7 +9,7 @@
   ansible.builtin.command: docker image inspect {{ dockerBuilderImage }}
   register: node_builder_image_inspect
   delegate_to: "{{ delegate_build_to_host }}"
-  become: "{{ become_in_build_machine | default(false) }}"
+  become: "{{ node_become_effective }}"
   changed_when: false
   failed_when: false
   run_once: "{{ node_ensure_builder_run_once | default(true) | bool }}"
@@ -19,6 +19,6 @@
     echo "FROM node:{{ node_version }}-slim
     {{ node_pm_cfg.dockerfile_run }}" | docker build --platform {{ docker_target_platform | default('linux/amd64') }} -t {{ dockerBuilderImage }} -
   delegate_to: "{{ delegate_build_to_host }}"
-  become: "{{ become_in_build_machine | default(false) }}"
+  become: "{{ node_become_effective }}"
   when: node_builder_image_inspect.rc != 0
   run_once: "{{ node_ensure_builder_run_once | default(true) | bool }}"
