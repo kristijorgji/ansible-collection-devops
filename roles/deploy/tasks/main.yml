@@ -1,0 +1,6 @@
+---
+# Stub: use tasks_from (check_needed, write_marker).
+- ansible.builtin.debug:
+    msg: >-
+      kristijorgji.devops.deploy has no default tasks. Use tasks_from:
+      check_needed or write_marker.

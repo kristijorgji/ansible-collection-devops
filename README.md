@@ -10,7 +10,7 @@ Install the whole collection; call only the roles you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.1.2
+    version: v0.2.0
 ```
 
 ```shell
@@ -30,10 +30,12 @@ Requires Docker for lint/fix targets and pre-commit hooks.
 
 ## Roles
 
-| Role                           | Purpose                                                       |
-| ------------------------------ | ------------------------------------------------------------- |
-| `kristijorgji.devops.nodejs`   | nvm/Docker builds for pnpm/yarn/npm; `pnpm_build` convenience |
-| `kristijorgji.devops.transfer` | Rsync a local tree to a remote server path                    |
+| Role                           | Purpose                                                             |
+| ------------------------------ | ------------------------------------------------------------------- |
+| `kristijorgji.devops.nodejs`   | nvm/Docker builds; server `pnpm_server_install` / `nvm_server_exec` |
+| `kristijorgji.devops.transfer` | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe        |
+| `kristijorgji.devops.deploy`   | Deploy skip gate (`check_needed`) and commit marker                 |
+| `kristijorgji.devops.git`      | Shallow clone + `commitHash` (no ECR facts)                         |
 
 ## Quick examples
 

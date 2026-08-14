@@ -2,9 +2,12 @@
 
 ## Task files
 
-| File                    | Purpose                                          |
-| ----------------------- | ------------------------------------------------ |
-| `rsync_local_to_server` | Incremental push via `ansible.posix.synchronize` |
+| File                     | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `rsync_local_to_server`  | Incremental push via `ansible.posix.synchronize` |
+| `rsync_paths_to_server`  | Partial monorepo path list + commit marker       |
+| `prune_and_rsync`        | Optional prune shell, full-tree rsync, marker    |
+| `wipe_dir_keep_inode`    | Clear dir contents; keep bind-mount inode        |
 
 ## Variables
 

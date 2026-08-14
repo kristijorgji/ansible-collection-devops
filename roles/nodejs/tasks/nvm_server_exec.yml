@@ -1,0 +1,92 @@
+---
+# Native nvm + package-manager install (optional) and optional node_command on the
+# inventory server (no delegate_to). nvm use only — Node must already be installed.
+# Prefer tasks_from: pnpm_server_install (sets node_package_manager: pnpm + prod args).
+# Requires: projectName, serverCodePath, node_package_manager
+
+- ansible.builtin.import_tasks: pm_resolve.yml
+
+- name: "{{ projectName }} - server: {{ node_package_manager }} install at {{ serverCodePath }}"
+  ansible.builtin.shell: |
+    set -e
+    unset NPM_CONFIG_PREFIX
+    export CI=1
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    nvm use {{ node_version }}
+    {{ node_pm_cfg.activate_shell }}
+    export PNPM_STORE_DIR="$HOME/.pnpm-store"
+    mkdir -p "$PNPM_STORE_DIR"
+    {% if node_package_manager == 'pnpm' %}
+    pnpm config set store-dir "$HOME/.pnpm-store"
+    {% endif %}
+    cd "{{ serverCodePath }}"
+    {{ node_package_manager }} {{ node_pm_install_args_effective }}
+  args:
+    executable: /bin/bash
+  environment:
+    CI: "1"
+    NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
+  no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
+  become: false
+  register: node_nvm_server_install_result
+  failed_when: false
+  changed_when: node_nvm_server_install_result.rc == 0
+  when: node_run_install | default(true) | bool
+
+- name: "{{ projectName }} - server: {{ node_package_manager }} install failed"
+  ansible.builtin.fail:
+    msg: |
+      {{ projectName }} {{ node_package_manager }} server install failed (rc={{ node_nvm_server_install_result.rc }})
+      cwd: {{ serverCodePath }}
+
+      --- stdout ---
+      {{ node_nvm_server_install_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+
+      --- stderr ---
+      {{ node_nvm_server_install_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+  when:
+    - node_run_install | default(true) | bool
+    - node_nvm_server_install_result.rc | default(0) != 0
+
+- name: "{{ projectName }} - server: {{ node_command | default('') }} at {{ serverCodePath }}"
+  ansible.builtin.shell: |
+    set -e
+    unset NPM_CONFIG_PREFIX
+    export CI=1
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+    nvm use {{ node_version }}
+    {{ node_pm_cfg.activate_shell }}
+    cd "{{ serverCodePath }}"
+    {{ node_command }}
+  args:
+    executable: /bin/bash
+  environment:
+    CI: "1"
+    NODE_AUTH_TOKEN: "{{ github_packages_token | default('') }}"
+  no_log: "{{ (github_packages_token | default('')) | length > 0 }}"
+  become: false
+  register: node_nvm_server_command_result
+  failed_when: false
+  changed_when: node_nvm_server_command_result.rc == 0
+  when:
+    - node_command is defined
+    - node_command | length > 0
+
+- name: "{{ projectName }} - server: command failed"
+  ansible.builtin.fail:
+    msg: |
+      {{ projectName }} server command failed (rc={{ node_nvm_server_command_result.rc }})
+      command: {{ node_command }}
+      cwd: {{ serverCodePath }}
+
+      --- stdout ---
+      {{ node_nvm_server_command_result.stdout | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+
+      --- stderr ---
+      {{ node_nvm_server_command_result.stderr | default('') | regex_replace('\x1b\\[[0-9;]*m', '') }}
+  when:
+    - node_command is defined
+    - node_command | length > 0
+    - node_nvm_server_command_result.rc | default(0) != 0

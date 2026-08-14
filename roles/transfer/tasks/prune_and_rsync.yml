@@ -1,0 +1,55 @@
+---
+# Prune dev artefacts, rsync full tree to serverCodePath (delete on target preserves bind-mount inode).
+# Prefer tasks_from: prune_and_rsync from consumers.
+# Requires: projectName, codePath, serverCodePath, delegate_build_to_host
+# Optional: pnpm_prune_shell, pnpm_run_prune, pnpm_run_transfer, pnpm_rsync_exclude_extra
+# Callers set delegate_build_to_host: 127.0.0.1 — full transfer is local-build only.
+
+- name: "{{ projectName }} - prune build artefacts not needed on server"
+  delegate_to: "{{ delegate_build_to_host }}"
+  become: "{{ become_in_build_machine }}"
+  ansible.builtin.shell: |
+    set -e
+    cd {{ codePath | quote }}
+    {{ pnpm_prune_shell }}
+  args:
+    executable: /bin/bash
+  when: pnpm_run_prune | default(true) | bool
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }} exists"
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: pnpm_run_transfer | default(true) | bool
+
+- name: "{{ projectName }} - rsync build tree to server"
+  ansible.posix.synchronize:
+    src: "{{ codePath }}/"
+    dest: "{{ serverCodePath }}/"
+    mode: push
+    delete: true
+    recursive: true
+    rsync_opts: >-
+      {{
+        (['.git'] + (pnpm_rsync_exclude_extra | default(['.next/cache', '.turbo'])))
+        | map('regex_replace', '^', '--exclude=')
+        | list
+      }}
+  when: pnpm_run_transfer | default(true) | bool
+
+- name: "{{ projectName }} - ensure server code path {{ serverCodePath }} is owned by app user"
+  become: true
+  ansible.builtin.file:
+    path: "{{ serverCodePath }}"
+    state: directory
+    recurse: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: pnpm_run_transfer | default(true) | bool
+
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.deploy
+    tasks_from: write_marker
+  when: pnpm_run_transfer | default(true) | bool

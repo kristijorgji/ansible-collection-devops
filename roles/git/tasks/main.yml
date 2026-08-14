@@ -1,0 +1,5 @@
+---
+# Stub: use tasks_from: clone_and_facts.
+- ansible.builtin.debug:
+    msg: >-
+      kristijorgji.devops.git has no default tasks. Use tasks_from: clone_and_facts.
