@@ -15,9 +15,8 @@
   when: ssh_config_template_path is not defined
 
 - name: Prepare GitHub SSH on each project build host
-  ansible.builtin.include_role:
-    name: kristijorgji.devops.git
-    tasks_from: prepare_ssh
+  ansible.builtin.include_tasks:
+    file: prepare_ssh.yml
     apply:
       delegate_to: "{{ item }}"
       become: "{{ become_in_build_machine if item != '127.0.0.1' else false }}"
