@@ -19,8 +19,9 @@ Load host/group SOPS secrets from `environments/*/secrets/` into play vars.
 | -------------- | ---------------------------------------------------- |
 | `load_secrets` | Find and decrypt matching `*.sops.yml` for this host |
 
-Requires the `community.sops` collection. Uses `return_method: vars-only` so values are
-real host vars (not only `ansible_facts`).
+Requires the `community.sops` collection. On **ansible-core 2.21+**, sets
+`return_method: vars-only` so values are real host vars (not only `ansible_facts`).
+On older cores the parameter is omitted (`vars-only` is rejected before 2.21).
 
 ---
 

@@ -24,7 +24,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.3.0
+    version: v0.3.1
 ```
 
 ```shell
@@ -54,7 +54,7 @@ Requires Docker for lint/fix targets and pre-commit hooks.
 | `kristijorgji.devops.transfer` | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe                 |
 | `kristijorgji.devops.deploy`   | Deploy skip gate (`check_needed`) and commit marker                          |
 | `kristijorgji.devops.git`      | SSH prepare, multi-project build hosts, shallow clone + `commitHash`         |
-| `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/` (`vars-only`)    |
+| `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/`                  |
 
 See each role’s `README.md` for full `tasks_from` tables and variables.
 
@@ -117,8 +117,9 @@ Do not reassign `become_in_build_machine` inside `include_role` vars.
   tags: always
 ```
 
-Requires `environments_dir`, `env`, `sops_age_key_file`, `sops_config_path`. Uses
-`return_method: vars-only` (real host vars). Not for project `vars/*.sops.yml`.
+Requires `environments_dir`, `env`, `sops_age_key_file`, `sops_config_path`. On
+ansible-core 2.21+ uses `return_method: vars-only` (real host vars); older cores omit it.
+Not for project `vars/*.sops.yml`.
 
 ### Rsync build output to a server
 
@@ -146,7 +147,7 @@ S_NODE_VERSION=22.16.0 bash \
 
 ## Requirements
 
-- Ansible Core ≥ 2.15 (2.19+ recommended; `sops` `vars-only` targets 2.19 / 2.21+)
+- Ansible Core ≥ 2.15 (2.19+ recommended; `sops` uses `vars-only` on 2.21+ only)
 - For `transfer`: `ansible.posix`
 - For `sops`: `community.sops`
 - For native Node builds: [nvm](https://github.com/nvm-sh/nvm) on the build host (Homebrew or `~/.nvm`)
