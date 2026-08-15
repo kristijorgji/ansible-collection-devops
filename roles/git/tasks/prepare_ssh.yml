@@ -1,0 +1,43 @@
+---
+# Install GitHub deploy key and SSH config on the current (or delegated) host.
+# Prefer tasks_from: prepare_ssh from consumers.
+# Requires: local_github_private_key_path, remote_github_private_key_path,
+#           ssh_config_template_path, ssh_config_dest_path
+# The SSH config template stays in the consumer repo (Host alias conventions differ).
+
+- name: ensure github.com is a known host
+  ansible.builtin.known_hosts:
+    name: github.com
+    key: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com 2>/dev/null') }}"
+    path: ~/.ssh/known_hosts
+    state: present
+
+- name: ensure that ~/.ssh/config.d folder exists
+  ansible.builtin.file:
+    path: ~/.ssh/config.d
+    recurse: true
+    state: directory
+
+- name: copy github.com ssh private key
+  ansible.builtin.copy:
+    src: "{{ local_github_private_key_path }}"
+    dest: "{{ remote_github_private_key_path }}"
+    mode: "0600"
+
+- name: ensure ~/.ssh/config file exists
+  ansible.builtin.copy:
+    content: ""
+    dest: ~/.ssh/config
+    force: false
+
+- name: Modify ~/.ssh/config to include subconfigs at ~/.ssh/config.d directory
+  ansible.builtin.lineinfile:
+    path: ~/.ssh/config
+    insertbefore: BOF
+    line: Include config.d/*
+
+- name: configure remote ssh to use keys for github.com
+  ansible.builtin.template:
+    src: "{{ ssh_config_template_path }}"
+    dest: "{{ ssh_config_dest_path }}"
+    mode: "0644"

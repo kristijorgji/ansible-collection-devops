@@ -5,6 +5,17 @@ Node.js build helpers via **nvm** or **Docker**, for **pnpm / yarn / npm**.
 Prefer **`pnpm_*`** entrypoints when using pnpm (they only set `node_package_manager: pnpm`).
 Call generics with `node_package_manager: yarn|npm|pnpm` for other managers.
 
+---
+
+## Table of contents
+
+- [Task files](#task-files-tasks_from)
+- [Scripts](#scripts-files)
+- [Important variables](#important-variables)
+- [Example: pnpm_build](#example-pnpm_build)
+
+---
+
 ## Task files (`tasks_from`)
 
 | File                                             | Purpose                                                 |
@@ -20,6 +31,8 @@ Call generics with `node_package_manager: yarn|npm|pnpm` for other managers.
 
 Task log names use greppable **`native:`** / **`docker:`** prefixes.
 
+---
+
 ## Scripts (`files/`)
 
 | Script                      | Purpose                                                       |
@@ -29,6 +42,8 @@ Task log names use greppable **`native:`** / **`docker:`** prefixes.
 | `yarn_install.sh`           | Shell helper: `S_NODE_VERSION` + optional platform/`prod`     |
 
 Mac + Ubuntu/Linux are mandatory. Native Windows shells fail clearly; use WSL or Docker.
+
+---
 
 ## Important variables
 
@@ -61,6 +76,8 @@ Role tasks use `node_become_effective` (never escalate on localhost). Pass play
 `become_in_build_machine` unchanged — do **not** rebind it in `include_role`
 `vars` to an expression that references itself (Ansible recursive-loop error).
 Optional `node_become` overrides the play policy without shadowing that name.
+
+---
 
 ## Example: `pnpm_build`
 

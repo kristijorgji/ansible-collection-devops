@@ -1,0 +1,16 @@
+---
+# Remove GitHub deploy key from every build host prepared by prepare_ssh_for_projects.
+# Re-resolves hosts so cleanup works even if facts were cleared between pre_tasks and post_tasks.
+# Prefer tasks_from: cleanup_ssh_for_projects from consumers.
+# Requires: projects, project, remote_github_private_key_path, become_in_build_machine.
+
+- ansible.builtin.include_tasks: resolve_build_hosts.yml
+
+- name: Delete github.com private key from each project build host
+  ansible.builtin.file:
+    state: absent
+    path: "{{ remote_github_private_key_path }}"
+  delegate_to: "{{ item }}"
+  become: "{{ become_in_build_machine if item != '127.0.0.1' else false }}"
+  loop: "{{ _project_git_prepare_hosts | default([]) | unique | list }}"
+  when: env != "local" and skip_git is not defined

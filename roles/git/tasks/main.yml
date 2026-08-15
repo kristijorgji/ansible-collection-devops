@@ -1,5 +1,8 @@
 ---
-# Stub: use tasks_from: clone_and_facts.
+# Stub: use tasks_from (clone_and_facts, prepare_ssh, resolve_build_hosts,
+# prepare_ssh_for_projects, cleanup_ssh_for_projects).
 - ansible.builtin.debug:
     msg: >-
-      kristijorgji.devops.git has no default tasks. Use tasks_from: clone_and_facts.
+      kristijorgji.devops.git has no default tasks. Use tasks_from:
+      clone_and_facts, prepare_ssh, resolve_build_hosts,
+      prepare_ssh_for_projects, or cleanup_ssh_for_projects.

@@ -1,0 +1,5 @@
+---
+# Stub: use tasks_from: load_secrets.
+- ansible.builtin.debug:
+    msg: >-
+      kristijorgji.devops.sops has no default tasks. Use tasks_from: load_secrets.
