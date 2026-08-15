@@ -1,0 +1,25 @@
+---
+# Prepare GitHub SSH on every build host used by active playbook projects.
+# Multi-project plays may build each project on a different host when
+# <projectName>_build_on_remote differs; otherwise fall back to delegate_build_to_host.
+# Prefer tasks_from: prepare_ssh_for_projects from consumers.
+# Requires: projects, project, environments_dir, become_in_build_machine.
+# Optional: ssh_config_template_path (default environments_dir/common/templates/ssh_config.j2).
+# Sets: _project_git_prepare_hosts (via resolve_build_hosts).
+
+- ansible.builtin.include_tasks: resolve_build_hosts.yml
+
+- name: Default ssh_config_template_path when unset
+  ansible.builtin.set_fact:
+    ssh_config_template_path: "{{ environments_dir }}/common/templates/ssh_config.j2"
+  when: ssh_config_template_path is not defined
+
+- name: Prepare GitHub SSH on each project build host
+  ansible.builtin.include_role:
+    name: kristijorgji.devops.git
+    tasks_from: prepare_ssh
+    apply:
+      delegate_to: "{{ item }}"
+      become: "{{ become_in_build_machine if item != '127.0.0.1' else false }}"
+  loop: "{{ _project_git_prepare_hosts | default([]) | unique | list }}"
+  when: env != "local" and skip_git is not defined

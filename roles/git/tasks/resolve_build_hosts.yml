@@ -1,0 +1,29 @@
+---
+# Resolve unique build hosts for active playbook projects.
+# Prefer tasks_from: resolve_build_hosts (also used by prepare_ssh_for_projects /
+# cleanup_ssh_for_projects).
+# Requires: projects, project (playbook vars). Sets _project_git_prepare_hosts.
+# Resolution per projectName:
+#   1. delegate_<projectName>_build_to_host if defined
+#   2. else inventory_hostname vs 127.0.0.1 from <projectName>_build_on_remote if defined
+#   3. else delegate_build_to_host if defined
+#   4. else 127.0.0.1
+
+- name: Resolve build hosts for active projects
+  ansible.builtin.set_fact:
+    _project_git_prepare_hosts: "{{ _project_git_prepare_hosts | default([]) | union([_resolved_build_host]) | list }}"
+  vars:
+    _delegate_var_name: "delegate_{{ item }}_build_to_host"
+    _build_on_remote_var_name: "{{ item }}_build_on_remote"
+    _resolved_build_host: >-
+      {% if _delegate_var_name in vars -%}
+        {{ vars[_delegate_var_name] }}
+      {%- elif _build_on_remote_var_name in vars -%}
+        {{ inventory_hostname if (vars[_build_on_remote_var_name] | bool) else '127.0.0.1' }}
+      {%- elif delegate_build_to_host is defined -%}
+        {{ delegate_build_to_host }}
+      {%- else -%}
+        127.0.0.1
+      {%- endif %}
+  loop: "{{ projects }}"
+  when: item == project or project == "all"
