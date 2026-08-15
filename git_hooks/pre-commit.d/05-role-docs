@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Require role README coverage when role tasks or READMEs change.
+exec 1>&2
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^roles/' || true)
+if [ -z "$STAGED" ]; then
+	exit 0
+fi
+
+if ! "$REPO_ROOT/scripts/check-role-docs.sh"; then
+	echo "Fix role READMEs or run:"
+	echo "  ./scripts/check-role-docs.sh"
+	exit 1
+fi
+
+exit 0

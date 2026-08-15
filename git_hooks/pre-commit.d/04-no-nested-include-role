@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Ban include_role inside collection role tasks.
+exec 1>&2
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^roles/.*/tasks/' || true)
+if [ -z "$STAGED" ]; then
+	exit 0
+fi
+
+if ! "$REPO_ROOT/scripts/check-no-nested-include-role.sh"; then
+	echo "Fix nested include_role (use include_tasks) or run:"
+	echo "  ./scripts/check-no-nested-include-role.sh"
+	exit 1
+fi
+
+exit 0

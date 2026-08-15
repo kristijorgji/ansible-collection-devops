@@ -23,9 +23,8 @@
     - clone
 
 - name: "{{ projectName }} - clear stale checkout in place (preserve kj_proxy bind mount)"
-  ansible.builtin.include_role:
-    name: kristijorgji.devops.transfer
-    tasks_from: wipe_dir_keep_inode
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../transfer/tasks/wipe_dir_keep_inode.yml"
     apply:
       become: "{{ become_in_build_machine | default(false) }}"
   vars:

@@ -1,0 +1,18 @@
+---
+# Fetch missing SSM parameters from Parameter Store into host vars.
+# Prefer tasks_from: read_from_definitions from consumers.
+# Requires: ssm_vars, ssm_reg, ssm_aws_access_key_id, ssm_aws_secret_access_key
+# Optional: read_ssm_label, ssm_ignore_cache
+# Skip keys already set (e.g. ssm_cache.yml). Use varnames, not vars[item.key]:
+# magic vars[...] is unreliable under ansible-core 2.19 lazy templating.
+# Requires amazon.aws (lookup aws_ssm) and controller boto3. On macOS set
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES or lookup workers die after fork.
+
+- name: "{{ read_ssm_label | default(projectName) | default('ssm') }} - set facts from ssm requirements"
+  no_log: true
+  ansible.builtin.set_fact:
+    "{{ item.key }}": "{{ lookup('amazon.aws.aws_ssm', item.value, region=ssm_reg, aws_access_key=ssm_aws_access_key_id, aws_secret_key=ssm_aws_secret_access_key) | trim }}"
+  loop: "{{ ssm_vars | dict2items }}"
+  when: >-
+    ssm_ignore_cache is defined
+    or (lookup('ansible.builtin.varnames', '^' ~ item.key ~ '$') | length == 0)

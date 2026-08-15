@@ -49,7 +49,6 @@
     group: "{{ ansible_user }}"
   when: pnpm_run_transfer | default(true) | bool
 
-- ansible.builtin.include_role:
-    name: kristijorgji.devops.deploy
-    tasks_from: write_marker
+- ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../deploy/tasks/write_marker.yml"
   when: pnpm_run_transfer | default(true) | bool

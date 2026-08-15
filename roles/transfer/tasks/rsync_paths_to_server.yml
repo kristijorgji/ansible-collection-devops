@@ -33,8 +33,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
 
-- ansible.builtin.include_role:
-    name: kristijorgji.devops.deploy
-    tasks_from: write_marker
+- ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../deploy/tasks/write_marker.yml"
   vars:
     deploy_commit_marker_dir: "{{ monorepo_deploy_marker_path | default(serverCodePath) }}"
