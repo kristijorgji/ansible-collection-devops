@@ -1,13 +1,13 @@
 ---
 namespace: kristijorgji
 name: devops
-version: 0.3.2
+version: 0.4.0
 readme: README.md
 authors:
   - Kristi Jorgji
 description: >
   Reusable Ansible roles for devops build, transfer, deploy skip, git SSH/clone,
-  and SOPS host-secret loading (Node via nvm or Docker, rsync, commit markers).
+  SOPS host-secret loading, and SSM cache/fetch (Node via nvm or Docker, rsync).
 license:
   - MIT
 tags:
@@ -19,6 +19,7 @@ tags:
   - docker
   - git
   - sops
+  - ssm
 repository: https://github.com/kristijorgji/ansible-collection-devops
 documentation: https://github.com/kristijorgji/ansible-collection-devops
 homepage: https://github.com/kristijorgji/ansible-collection-devops

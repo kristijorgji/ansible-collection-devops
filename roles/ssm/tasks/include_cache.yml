@@ -1,0 +1,14 @@
+---
+# Load optional environments/<env>/ssm_cache.yml when present.
+# Prefer tasks_from: include_cache from consumers (pre_tasks, tags: always).
+# Requires: environments_dir, env
+# Optional: ssm_cache_path (default environments_dir/env/ssm_cache.yml)
+
+- name: include cached ssm vars if defined
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ssm_cache_path | default(environments_dir ~ '/' ~ env ~ '/ssm_cache.yml') }}"
+      skip: true
+  tags:
+    - always

@@ -1,0 +1,6 @@
+---
+# Stub: use tasks_from: include_cache or read_from_definitions.
+- ansible.builtin.debug:
+    msg: >-
+      kristijorgji.devops.ssm has no default tasks. Use tasks_from: include_cache
+      or read_from_definitions.

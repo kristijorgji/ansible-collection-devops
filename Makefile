@@ -2,9 +2,9 @@ AL_VERSION := latest
 ML_VERSION := latest
 PRETTIER_IMAGE := tmknom/prettier:latest
 
-.PHONY: lint lint-ansible lint-markdown fix fix-yaml fix-markdown verify-hooks
+.PHONY: lint lint-ansible lint-markdown lint-role-docs lint-no-nested-include-role fix fix-yaml fix-markdown verify-hooks
 
-lint: lint-ansible lint-markdown ## Run ansible-lint + markdownlint
+lint: lint-ansible lint-markdown lint-no-nested-include-role lint-role-docs ## Run ansible-lint + markdownlint + role checks
 
 lint-ansible: ## Ansible + YAML via ansible-lint (embeds yamllint)
 	@echo "################################################################################"
@@ -20,6 +20,18 @@ lint-markdown: ## Check markdown via markdownlint-cli2
 	@echo "################################################################################"
 	@docker run --rm -v "$(PWD):/data" -w /data \
 		davidanson/markdownlint-cli2:$(ML_VERSION) "**/*.md"
+
+lint-no-nested-include-role: ## Ban include_role inside roles/*/tasks
+	@echo "################################################################################"
+	@echo "# check-no-nested-include-role"
+	@echo "################################################################################"
+	@./scripts/check-no-nested-include-role.sh
+
+lint-role-docs: ## Require role README coverage for every tasks_from file
+	@echo "################################################################################"
+	@echo "# check-role-docs"
+	@echo "################################################################################"
+	@./scripts/check-role-docs.sh
 
 fix: fix-yaml fix-markdown ## Auto-fix YAML + markdown
 
