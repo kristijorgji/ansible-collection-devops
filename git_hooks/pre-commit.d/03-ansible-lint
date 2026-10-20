@@ -16,7 +16,20 @@ if ! command -v docker >/dev/null 2>&1; then
 	exit 0
 fi
 
-if ! docker run --rm -v "$REPO_ROOT:/code" -w /code pipelinecomponents/ansible-lint:latest ansible-lint -v .; then
+# Lint staged role dirs (and any other staged YAML) so new ansible-lint rules
+# on older roles do not block unrelated commits. `make lint-ansible` still
+# scans the whole collection.
+TARGETS=$(printf '%s\n' "$STAGED" | awk '
+	$0 ~ /^roles\/[^\/]+\// { split($0, a, "/"); print a[1] "/" a[2]; next }
+	{ print }
+' | sort -u | tr '\n' ' ')
+if [ -z "${TARGETS// /}" ]; then
+	exit 0
+fi
+
+# shellcheck disable=SC2086
+if ! docker run --rm -v "$REPO_ROOT:/code" -w /code \
+	pipelinecomponents/ansible-lint:latest ansible-lint -v $TARGETS; then
 	echo ""
 	echo "ansible-lint failed. Fix the errors above or run:"
 	echo "  make lint-ansible"

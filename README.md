@@ -1,7 +1,8 @@
 # kristijorgji.devops
 
 Public Ansible collection of reusable **devops** helpers: Node builds, rsync transfer,
-deploy skip/markers, GitHub SSH + clone, SOPS host-secret loading, and SSM cache/fetch.
+deploy skip/markers, GitHub SSH + clone, SOPS host-secret loading, SSM cache/fetch,
+and S3 prefix janitor.
 
 Install the whole collection; call only the roles / `tasks_from` you need.
 
@@ -24,7 +25,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.4.0
+    version: v0.5.0
 ```
 
 ```shell
@@ -53,14 +54,15 @@ When the play uses `--tags`, put matching tags in `apply.tags` on consumer
 
 ## Roles
 
-| Role                           | Purpose                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------- |
-| `kristijorgji.devops.nodejs`   | nvm/Docker builds; server `pnpm_server_install` / `nvm_server_exec`          |
-| `kristijorgji.devops.transfer` | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe                 |
-| `kristijorgji.devops.deploy`   | Deploy skip gate (`check_needed`) and commit marker                          |
-| `kristijorgji.devops.git`      | SSH prepare, multi-project build hosts, shallow clone + `commitHash`         |
-| `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/`                  |
-| `kristijorgji.devops.ssm`      | Optional `ssm_cache.yml` include + live Parameter Store fetch                |
+| Role                           | Purpose                                                              |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `kristijorgji.devops.nodejs`   | nvm/Docker builds; server `pnpm_server_install` / `nvm_server_exec`  |
+| `kristijorgji.devops.transfer` | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe         |
+| `kristijorgji.devops.deploy`   | Deploy skip gate (`check_needed`) and commit marker                  |
+| `kristijorgji.devops.git`      | SSH prepare, multi-project build hosts, shallow clone + `commitHash` |
+| `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/`          |
+| `kristijorgji.devops.ssm`      | Optional `ssm_cache.yml` include + live Parameter Store fetch        |
+| `kristijorgji.devops.s3`       | Keep-last-N janitor for versioned S3 key prefixes                    |
 
 See each role’s `README.md` for full `tasks_from` tables and variables.
 
@@ -148,6 +150,26 @@ Requires `amazon.aws` and controller `boto3`. On macOS export
     rsync_dest_suffix: /build
 ```
 
+### S3 prefix janitor
+
+```yaml
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.s3
+    tasks_from: janitor_prefixes
+    apply:
+      delegate_to: 127.0.0.1
+      become: false
+  vars:
+    s3_janitor_bucket: my-web-assets
+    s3_janitor_prefix: web/
+    s3_janitor_live_id: "{{ commitHash }}"
+    s3_janitor_aws_access_key_id: "{{ deploy_access_key_id }}"
+    s3_janitor_aws_secret_access_key: "{{ deploy_secret_access_key }}"
+```
+
+Requires controller `boto3`. See the role README for `history.json` bootstrap and keep/delete
+policy.
+
 ### Yarn install script (Mac/Ubuntu)
 
 ```shell
@@ -164,4 +186,5 @@ S_NODE_VERSION=22.16.0 bash \
 - For `transfer`: `ansible.posix`
 - For `sops`: `community.sops`
 - For `ssm`: `amazon.aws` + controller `boto3`
+- For `s3` / `janitor_prefixes`: controller `boto3` on `ansible_playbook_python`
 - For native Node builds: [nvm](https://github.com/nvm-sh/nvm) on the build host (Homebrew or `~/.nvm`)
