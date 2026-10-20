@@ -1,0 +1,56 @@
+---
+# Keep-last-N janitor for versioned S3 key prefixes (git-SHA folders).
+# Prefer tasks_from: janitor_prefixes from consumers.
+# Requires: s3_janitor_bucket, s3_janitor_prefix, s3_janitor_live_id
+# Optional: s3_janitor_region, s3_janitor_keep_releases, s3_janitor_grace_days,
+#   s3_janitor_max_delete, s3_janitor_dry_run, s3_janitor_reserved,
+#   s3_janitor_id_pattern, s3_janitor_history_key
+# AWS credentials: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in the environment
+# (consumer apply.delegate_to / become). Engine exits 0 on AWS errors.
+
+- name: s3 janitor_prefixes - assert required vars
+  ansible.builtin.assert:
+    that:
+      - s3_janitor_bucket is defined
+      - s3_janitor_bucket | length > 0
+      - s3_janitor_prefix is defined
+      - s3_janitor_prefix | length > 0
+      - s3_janitor_live_id is defined
+      - s3_janitor_live_id | length > 0
+    fail_msg: >-
+      kristijorgji.devops.s3 / janitor_prefixes requires s3_janitor_bucket,
+      s3_janitor_prefix, and s3_janitor_live_id.
+
+- name: s3 janitor_prefixes - run keep-last-N prefix GC
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python | default('python3') }}"
+      - "{{ role_path }}/files/janitor_prefixes.py"
+  environment:
+    S3_JANITOR_BUCKET: "{{ s3_janitor_bucket }}"
+    S3_JANITOR_REGION: "{{ s3_janitor_region | default('eu-central-1') }}"
+    S3_JANITOR_PREFIX: "{{ s3_janitor_prefix }}"
+    S3_JANITOR_LIVE_ID: "{{ s3_janitor_live_id }}"
+    S3_JANITOR_KEEP_RELEASES: "{{ s3_janitor_keep_releases | default(10) }}"
+    S3_JANITOR_GRACE_DAYS: "{{ s3_janitor_grace_days | default(7) }}"
+    S3_JANITOR_MAX_DELETE: "{{ s3_janitor_max_delete | default(20) }}"
+    S3_JANITOR_DRY_RUN: "{{ 1 if s3_janitor_dry_run | default(false) | bool else 0 }}"
+    S3_JANITOR_RESERVED: "{{ (s3_janitor_reserved | default(['shared', '.janitor'])) | join(',') }}"
+    S3_JANITOR_ID_PATTERN: "{{ s3_janitor_id_pattern | default('(?i)^[0-9a-f]{7,40}$') }}"
+    S3_JANITOR_HISTORY_KEY: "{{ s3_janitor_history_key | default('') }}"
+    AWS_DEFAULT_REGION: "{{ s3_janitor_region | default('eu-central-1') }}"
+    AWS_ACCESS_KEY_ID: "{{ s3_janitor_aws_access_key_id | default(omit) }}"
+    AWS_SECRET_ACCESS_KEY: "{{ s3_janitor_aws_secret_access_key | default(omit) }}"
+  no_log: true
+  register: s3_janitor_result
+  failed_when: s3_janitor_result.rc | default(1) != 0
+  changed_when: >-
+    s3_janitor_result.rc | default(1) == 0
+    and (s3_janitor_result.stdout | default('')) | length > 0
+    and (
+      (s3_janitor_result.stdout | from_json).deleted | default([]) | length > 0
+    )
+
+- name: s3 janitor_prefixes - summary
+  ansible.builtin.debug:
+    msg: "{{ s3_janitor_result.stdout | default('') }}"

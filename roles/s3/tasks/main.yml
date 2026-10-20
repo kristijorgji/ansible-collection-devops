@@ -1,0 +1,7 @@
+---
+# Stub: use tasks_from (janitor_prefixes).
+- name: s3 - stub (use tasks_from janitor_prefixes)
+  ansible.builtin.debug:
+    msg: >-
+      kristijorgji.devops.s3 has no default tasks. Use tasks_from:
+      janitor_prefixes.
