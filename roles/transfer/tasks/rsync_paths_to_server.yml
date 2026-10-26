@@ -15,14 +15,26 @@
         else [monorepo_sync_src]
       }}
 
+- name: "{{ projectName }} - stat monorepo sync paths on the controller"
+  ansible.builtin.stat:
+    path: "{{ monorepo_local_code_path }}/{{ item | regex_replace('/+$', '') }}"
+  loop: "{{ monorepo_sync_archive_paths }}"
+  delegate_to: localhost
+  register: monorepo_sync_path_stats
+
+# A directory src without a trailing slash nests into an existing dest
+# (apps/backend/backend) and leaves the real package.json stale, so
+# pnpm --frozen-lockfile fails. Append the slash only when the path is a directory.
 - name: "{{ projectName }} - rsync partial paths to server"
   ansible.posix.synchronize:
-    src: "{{ monorepo_local_code_path }}/{{ item }}"
-    dest: "{{ serverCodePath }}/{{ item }}"
+    src: "{{ monorepo_local_code_path }}/{{ item.item | regex_replace('/+$', '') }}{{ '/' if item.stat.isdir | default(false) else '' }}"
+    dest: "{{ serverCodePath }}/{{ item.item | regex_replace('/+$', '') }}{{ '/' if item.stat.isdir | default(false) else '' }}"
     mode: push
     delete: true
     recursive: true
-  loop: "{{ monorepo_sync_archive_paths }}"
+  loop: "{{ monorepo_sync_path_stats.results }}"
+  loop_control:
+    label: "{{ item.item }}"
 
 - name: "{{ projectName }} - ensure server code path {{ serverCodePath }} is owned by app user"
   become: true
