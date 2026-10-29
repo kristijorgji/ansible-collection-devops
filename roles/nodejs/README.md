@@ -76,7 +76,10 @@ Optional: `node_build_executor` (`native` \| `docker`), `node_command`,
 ## `pnpm_nvm_exec`
 
 Required: `projectName`, `codePath`, `delegate_build_to_host`.
-Optional: `node_command`, `node_run_install`, `node_version`, `github_packages_token`.
+Optional: `node_command`, `node_run_install`, `node_version`, `github_packages_token`,
+`node_command_unchanged_log` (if that substring appears in command stdout/stderr, report **ok** /
+not changed — for successful no-ops. Do not put `changed_when` under `include_role` `apply`; it is
+invalid on a Block in ansible-core 2.19+).
 
 ```yaml
 - ansible.builtin.include_role:
@@ -157,7 +160,7 @@ Optional: `node_docker_extra_volume_flags`, `docker_target_platform`.
 
 Required: `projectName`, `codePath`, `delegate_build_to_host`, `node_package_manager`.
 Optional: `node_command`, `node_run_install`, `node_version`, `node_pm_version`,
-`node_apply_cross_platform`, `github_packages_token`.
+`node_apply_cross_platform`, `github_packages_token`, `node_command_unchanged_log`.
 
 ```yaml
 - ansible.builtin.include_role:

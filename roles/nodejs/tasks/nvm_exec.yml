@@ -69,7 +69,16 @@
   become: "{{ node_become_effective }}"
   register: node_nvm_command_result
   failed_when: false
-  changed_when: node_nvm_command_result.rc == 0
+  # Optional node_command_unchanged_log: if that substring appears in output, report ok (not changed).
+  # include_role apply cannot set changed_when (it applies to a Block). Pass this var from the caller.
+  changed_when:
+    - node_nvm_command_result.rc == 0
+    - >-
+      (node_command_unchanged_log | default('') | length) == 0
+      or (
+        (node_command_unchanged_log | default('')) not in (node_nvm_command_result.stdout | default(''))
+        and (node_command_unchanged_log | default('')) not in (node_nvm_command_result.stderr | default(''))
+      )
   when:
     - node_command is defined
     - node_command | length > 0
