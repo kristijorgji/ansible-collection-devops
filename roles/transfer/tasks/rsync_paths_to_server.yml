@@ -6,7 +6,7 @@
 # Multi tree: monorepo_sync_paths (list of paths relative to repo root)
 # Optional: monorepo_deploy_marker_path (directory for .ansible-deploy-commit)
 
-- name: "{{ projectName }} - resolve monorepo sync paths"
+- name: "{{ projectName }} - resolve monorepo sync paths"  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     monorepo_sync_archive_paths: >-
       {{
@@ -15,23 +15,27 @@
         else [monorepo_sync_src]
       }}
 
-- name: "{{ projectName }} - stat monorepo sync paths on the controller"
+- name: "{{ projectName }} - stat monorepo sync paths on the controller"  # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ monorepo_local_code_path }}/{{ item | regex_replace('/+$', '') }}"
   loop: "{{ monorepo_sync_archive_paths }}"
   delegate_to: localhost
+  become: false
   register: monorepo_sync_path_stats
 
 # A directory src without a trailing slash nests into an existing dest
 # (apps/backend/backend) and leaves the real package.json stale, so
 # pnpm --frozen-lockfile fails. Append the slash only when the path is a directory.
+# synchronize runs on the control node — do not inherit play become (sudo on localhost).
 - name: "{{ projectName }} - rsync partial paths to server"
+  become: false
   ansible.posix.synchronize:
     src: "{{ monorepo_local_code_path }}/{{ item.item | regex_replace('/+$', '') }}{{ '/' if item.stat.isdir | default(false) else '' }}"
     dest: "{{ serverCodePath }}/{{ item.item | regex_replace('/+$', '') }}{{ '/' if item.stat.isdir | default(false) else '' }}"
     mode: push
     delete: true
     recursive: true
+    rsync_opts: "{{ monorepo_sync_rsync_opts | default(['--exclude=.env', '--exclude=.env.*']) }}"
   loop: "{{ monorepo_sync_path_stats.results }}"
   loop_control:
     label: "{{ item.item }}"
@@ -45,7 +49,8 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
 
-- ansible.builtin.include_tasks:
+- name: "{{ projectName }} - write deploy commit marker"
+  ansible.builtin.include_tasks:
     file: "{{ role_path }}/../deploy/tasks/write_marker.yml"
   vars:
     deploy_commit_marker_dir: "{{ monorepo_deploy_marker_path | default(serverCodePath) }}"
