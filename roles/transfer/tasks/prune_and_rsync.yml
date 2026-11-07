@@ -49,6 +49,7 @@
     group: "{{ ansible_user }}"
   when: pnpm_run_transfer | default(true) | bool
 
-- ansible.builtin.include_tasks:
+- name: "{{ projectName }} - write deploy commit marker"
+  ansible.builtin.include_tasks:
     file: "{{ role_path }}/../deploy/tasks/write_marker.yml"
   when: pnpm_run_transfer | default(true) | bool

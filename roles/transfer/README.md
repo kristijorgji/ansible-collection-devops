@@ -56,7 +56,13 @@ Optional: `rsync_src` (default `{{ codePath }}/`), `rsync_dest_suffix`,
 
 Required: `projectName`, `monorepo_local_code_path`, `serverCodePath`, and either
 `monorepo_sync_src` or `monorepo_sync_paths`.
-Optional: `monorepo_deploy_marker_path`, `commitHash` (for the marker).
+Optional: `monorepo_deploy_marker_path`, `commitHash` (for the marker),
+`monorepo_sync_rsync_opts` (default `--exclude=.env` / `--exclude=.env.*` so
+server-templated env files are not deleted when syncing app trees with
+`delete: true`).
+
+`stat` and `synchronize` use `become: false` on the controller so play-level
+`become: yes` does not require a local sudo password.
 
 ```yaml
 - ansible.builtin.include_role:
