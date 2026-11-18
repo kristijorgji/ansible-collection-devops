@@ -56,8 +56,9 @@ Pinned CE / plugin packages are `apt-mark` held.
 - `docker_packages_state: present` does not bump installed CE packages.
 - `docker_packages_state: latest` does.
 - Switching `docker.io` → CE with `docker_remove_conflicts: true` (default) removes
-  conflicting distro packages and **may restart the engine**. Containers with a restart
-  policy come back.
+  conflicting distro packages and **may restart the engine**. The role reloads systemd,
+  resets a failed `docker.socket` (socket activation after a distro swap), then starts
+  `docker.socket` and `docker.service`. Containers with a restart policy come back.
 - Writing `/etc/docker/daemon.json` from a non-empty `docker_daemon_options` notifies a
   restart. Leave it `{}` to leave an existing file unmanaged.
 

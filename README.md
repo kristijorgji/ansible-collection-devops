@@ -25,7 +25,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.6.0
+    version: v0.6.1
 ```
 
 ```shell

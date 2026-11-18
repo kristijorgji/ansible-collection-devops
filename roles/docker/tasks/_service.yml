@@ -1,5 +1,7 @@
 ---
 # Private: docker group + engine service. daemon.json only when docker_daemon_options is non-empty.
+# After replacing docker.io, docker.socket can be in start-limit; reset then start the socket
+# before dockerd (-H fd:// requires socket activation).
 
 - name: Ensure docker group exists
   ansible.builtin.group:
@@ -25,8 +27,24 @@
   notify: Restart docker
   when: docker_daemon_options | length > 0
 
+- name: Reload systemd after Docker package changes
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Reset failed Docker systemd units
+  ansible.builtin.command: systemctl reset-failed docker.socket docker.service
+  changed_when: false
+  failed_when: false
+
+- name: Enable and start docker.socket
+  ansible.builtin.systemd:
+    name: docker.socket
+    state: started
+    enabled: true
+  failed_when: false
+
 - name: Enable and start Docker
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: docker
     state: "{{ docker_service_state }}"
     enabled: "{{ docker_service_enabled }}"
