@@ -1,0 +1,21 @@
+---
+# Defaults for kristijorgji.devops.docker (override per play / include_role vars).
+# Does not set docker_images or docker_target_platform (those belong to consumers).
+
+docker_install_source: ce
+docker_packages_state: present
+docker_engine_version: ""
+docker_install_buildx: true
+docker_remove_conflicts: true
+docker_apt_channel: stable
+docker_apt_arch: ""
+docker_repo_url: https://download.docker.com/linux
+docker_service_state: started
+docker_service_enabled: true
+docker_users: []
+docker_daemon_options: {}
+docker_compose_install: both
+docker_compose_plugin_version: ""
+docker_compose_standalone_version: latest
+docker_compose_standalone_path: /usr/local/bin/docker-compose
+docker_skip: false

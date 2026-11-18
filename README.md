@@ -2,7 +2,7 @@
 
 Public Ansible collection of reusable **devops** helpers: Node builds, rsync transfer,
 deploy skip/markers, GitHub SSH + clone, SOPS host-secret loading, SSM cache/fetch,
-and S3 prefix janitor.
+S3 prefix janitor, and Docker CE + Compose.
 
 Install the whole collection; call only the roles / `tasks_from` you need.
 
@@ -25,7 +25,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.5.0
+    version: v0.6.1
 ```
 
 ```shell
@@ -63,6 +63,7 @@ When the play uses `--tags`, put matching tags in `apply.tags` on consumer
 | `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/`          |
 | `kristijorgji.devops.ssm`      | Optional `ssm_cache.yml` include + live Parameter Store fetch        |
 | `kristijorgji.devops.s3`       | Keep-last-N janitor for versioned S3 key prefixes                    |
+| `kristijorgji.devops.docker`   | Docker CE (amd64/arm64) + Compose plugin and/or standalone binary    |
 
 See each role’s `README.md` for full `tasks_from` tables and variables.
 
@@ -170,6 +171,23 @@ Requires `amazon.aws` and controller `boto3`. On macOS export
 Requires controller `boto3`. See the role README for `history.json` bootstrap and keep/delete
 policy.
 
+### Install Docker engine
+
+```yaml
+- ansible.builtin.include_role:
+    name: kristijorgji.devops.docker
+    apply:
+      tags: docker
+  vars:
+    docker_users:
+      - "{{ ansible_user }}"
+    docker_compose_install: both
+  tags: docker
+```
+
+Or `roles: [kristijorgji.devops.docker]`. See the role README for version pins,
+`docker_install_source: distro`, and `docker_skip`.
+
 ### Yarn install script (Mac/Ubuntu)
 
 ```shell
@@ -188,3 +206,4 @@ S_NODE_VERSION=22.16.0 bash \
 - For `ssm`: `amazon.aws` + controller `boto3`
 - For `s3` / `janitor_prefixes`: controller `boto3` on `ansible_playbook_python`
 - For native Node builds: [nvm](https://github.com/nvm-sh/nvm) on the build host (Homebrew or `~/.nvm`)
+- For `docker`: Debian-family target (Ubuntu 22.04/24.04, Debian 12), amd64 or arm64

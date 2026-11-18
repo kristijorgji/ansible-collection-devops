@@ -1,0 +1,5 @@
+---
+# kristijorgji.devops.docker — state role: installing via `roles:` converges the engine.
+# Prefer tasks_from: install (same as this file), compose, or users for a subset.
+- name: Install Docker engine, service, users, and Compose
+  ansible.builtin.import_tasks: install.yml

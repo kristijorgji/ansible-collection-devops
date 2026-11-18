@@ -1,0 +1,38 @@
+---
+# Public tasks_from: install — full engine + service + users + compose.
+# Same tasks as role main.yml (roles: [kristijorgji.devops.docker]).
+
+- name: Skip kristijorgji.devops.docker
+  ansible.builtin.debug:
+    msg: docker_skip is true; not installing or configuring Docker.
+  when: docker_skip | bool
+
+- name: Resolve Docker facts
+  ansible.builtin.include_tasks: _facts.yml
+  when: not docker_skip | bool
+
+- name: Add Docker apt repository
+  ansible.builtin.include_tasks: _repo.yml
+  when:
+    - not docker_skip | bool
+    - docker_install_source == "ce"
+
+- name: Install Docker engine packages
+  ansible.builtin.include_tasks: _engine.yml
+  when:
+    - not docker_skip | bool
+    - docker_install_source in ["ce", "distro"]
+
+- name: Configure Docker service
+  ansible.builtin.include_tasks: _service.yml
+  when: not docker_skip | bool
+
+- name: Configure Docker group members
+  ansible.builtin.include_tasks: users.yml
+  when: not docker_skip | bool
+
+- name: Install Docker Compose
+  ansible.builtin.include_tasks: compose.yml
+  when:
+    - not docker_skip | bool
+    - docker_compose_install != "none"

@@ -1,0 +1,38 @@
+---
+# Public tasks_from: compose — Compose plugin (CE) and/or standalone GitHub binary.
+# Plugin packages are installed in _engine.yml when source is ce.
+# distro + plugin-only is rejected in _facts.yml.
+
+- name: Note that distro source installs standalone Compose only
+  ansible.builtin.debug:
+    msg: >-
+      docker_install_source=distro does not install docker-compose-plugin.
+      Installing the standalone binary only.
+  when:
+    - docker_install_source == "distro"
+    - docker_compose_install == "both"
+
+- name: Install Docker Compose standalone binary
+  ansible.builtin.get_url:
+    url: "{{ docker_compose_standalone_url }}"
+    dest: "{{ docker_compose_standalone_path }}"
+    mode: "0755"
+    owner: root
+    group: root
+  when: docker_want_compose_standalone | bool
+  vars:
+    docker_compose_standalone_url: >-
+      {{
+        'https://github.com/docker/compose/releases/latest/download/docker-compose-linux-'
+        ~ docker_compose_github_arch
+        if docker_compose_standalone_version == 'latest'
+        else
+          'https://github.com/docker/compose/releases/download/'
+          ~ (
+              docker_compose_standalone_version
+              if docker_compose_standalone_version.startswith('v')
+              else 'v' ~ docker_compose_standalone_version
+            )
+          ~ '/docker-compose-linux-'
+          ~ docker_compose_github_arch
+      }}
