@@ -30,6 +30,7 @@ for role_dir in "${repo_root}/roles"/*; do
 	for task_file in "${role_dir}/tasks"/*.yml; do
 		task="$(basename "${task_file}" .yml)"
 		[[ "${task}" == "main" ]] && continue
+		[[ "${task}" == _* ]] && continue
 		if ! grep -qE "\\[\`${task}\`\\]\\(#${task}\\)" "${readme}"; then
 			echo "ERROR: ${readme} missing TOC link for \`${task}\`" >&2
 			failed=1

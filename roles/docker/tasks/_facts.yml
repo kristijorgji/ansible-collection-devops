@@ -1,0 +1,63 @@
+---
+# Private: architecture map and OS gate. No silent amd64 fallback.
+
+- name: Fail when the OS family is not Debian
+  ansible.builtin.fail:
+    msg: >-
+      kristijorgji.devops.docker v1 supports Debian-family hosts only
+      (Ubuntu 22.04/24.04, Debian 12). ansible_os_family={{ ansible_os_family }}.
+  when: ansible_os_family != "Debian"
+
+- name: Fail when docker_install_source is invalid
+  ansible.builtin.fail:
+    msg: >-
+      docker_install_source must be ce, distro, or skip (got
+      {{ docker_install_source }}).
+  when: docker_install_source not in ["ce", "distro", "skip"]
+
+- name: Fail when docker_compose_install is invalid
+  ansible.builtin.fail:
+    msg: >-
+      docker_compose_install must be plugin, standalone, both, or none (got
+      {{ docker_compose_install }}).
+  when: docker_compose_install not in ["plugin", "standalone", "both", "none"]
+
+- name: Map hardware architecture to apt and Compose GitHub names
+  ansible.builtin.set_fact:
+    docker_arch_map:
+      x86_64:
+        apt: amd64
+        compose: x86_64
+      amd64:
+        apt: amd64
+        compose: x86_64
+      aarch64:
+        apt: arm64
+        compose: aarch64
+      arm64:
+        apt: arm64
+        compose: aarch64
+
+- name: Fail when ansible_architecture is not mapped
+  ansible.builtin.fail:
+    msg: >-
+      Unsupported architecture {{ ansible_architecture }}. Supported:
+      x86_64, amd64, aarch64, arm64.
+  when: ansible_architecture not in docker_arch_map
+
+- name: Set docker apt and Compose GitHub architectures
+  ansible.builtin.set_fact:
+    docker_apt_arch: "{{ docker_apt_arch if docker_apt_arch | length > 0 else docker_arch_map[ansible_architecture].apt }}"
+    docker_compose_github_arch: "{{ docker_arch_map[ansible_architecture].compose }}"
+    docker_want_compose_plugin: "{{ docker_compose_install in ['plugin', 'both'] }}"
+    docker_want_compose_standalone: "{{ docker_compose_install in ['standalone', 'both'] }}"
+
+- name: Fail when distro packages are asked for the Compose plugin
+  ansible.builtin.fail:
+    msg: >-
+      docker_install_source=distro does not install docker-compose-plugin from
+      Docker Inc. Set docker_compose_install to standalone, both (standalone
+      only on distro), or none. Do not mix Ubuntu docker-compose-v2 with CE.
+  when:
+    - docker_install_source == "distro"
+    - docker_compose_install == "plugin"

@@ -1,0 +1,11 @@
+---
+# Public tasks_from: users — append docker_users to the docker group.
+# Empty docker_users is a no-op. Does not assume ubuntu.
+
+- name: Add users to the docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+  when: docker_users | length > 0

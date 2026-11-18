@@ -1,0 +1,32 @@
+---
+# Private: docker group + engine service. daemon.json only when docker_daemon_options is non-empty.
+
+- name: Ensure docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: Ensure /etc/docker exists
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: docker_daemon_options | length > 0
+
+- name: Write Docker daemon.json
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ docker_daemon_options | to_nice_json }}\n"
+  notify: Restart docker
+  when: docker_daemon_options | length > 0
+
+- name: Enable and start Docker
+  ansible.builtin.service:
+    name: docker
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled }}"
