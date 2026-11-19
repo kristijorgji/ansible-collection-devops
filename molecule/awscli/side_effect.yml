@@ -1,10 +1,21 @@
 ---
-- name: Upgrade AWS CLI to a newer pin
+- name: Replace AWS CLI with an unusable binary, then pin 2.22.35
   hosts: all
   become: true
   gather_facts: false
   tasks:
-    - name: Install AWS CLI 2.22.35
+    - name: Plant an unusable aws that exits 126 without a version string
+      ansible.builtin.copy:
+        dest: /usr/local/bin/aws
+        owner: root
+        group: root
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          echo "cannot execute binary file: Exec format error" >&2
+          exit 126
+
+    - name: Reinstall AWS CLI 2.22.35 over the unusable binary
       ansible.builtin.include_role:
         name: kristijorgji.devops.awscli
         tasks_from: install

@@ -9,4 +9,7 @@ logrotate_defaults:
   delaycompress: true
   missingok: true
   notifempty: true
+  # Ubuntu /var/log is group-writable (syslog:adm). Without su, logrotate
+  # skips files whose parent is not exclusively root-owned.
+  su: root root
 logrotate_entries: []

@@ -133,7 +133,7 @@ Skip the role:
 | `docker_apt_arch`                   | `""`                                | Empty = from facts (`amd64` or `arm64`).                                             |
 | `docker_repo_url`                   | `https://download.docker.com/linux` | Base URL; distribution comes from `ansible_distribution`.                            |
 | `docker_repo_key_refresh`           | `false`                             | `true` re-downloads `/etc/apt/keyrings/docker.asc`.                                  |
-| `docker_repo_remove_legacy_list`    | `true`                              | Remove leftover `/etc/apt/sources.list.d/docker.list`.                               |
+| `docker_repo_remove_legacy_list`    | `true`                              | Remove leftover `docker.list` plus `.save` / `.distUpgrade`.                         |
 | `docker_service_state`              | `started`                           | `service` state.                                                                     |
 | `docker_service_enabled`            | `true`                              | Enable on boot.                                                                      |
 | `docker_users`                      | `[]`                                | Usernames appended to group `docker`. Empty = no group changes.                      |

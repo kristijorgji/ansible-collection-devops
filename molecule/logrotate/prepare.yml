@@ -13,10 +13,20 @@
         exit 1'
       changed_when: false
 
+    - name: Match Ubuntu cloud-image /var/log permissions
+      ansible.builtin.file:
+        path: /var/log
+        state: directory
+        owner: root
+        group: adm
+        mode: "0775"
+
     - name: Create sample log directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
+        owner: root
+        group: root
         mode: "0755"
       loop:
         - /var/log/app-a

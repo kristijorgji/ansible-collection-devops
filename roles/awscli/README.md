@@ -1,8 +1,9 @@
 # Role: `kristijorgji.devops.awscli`
 
 Install the AWS CLI v2 zip bundle for amd64 or arm64. Empty `awscli_version`
-installs the current bundle only when `aws` is missing. A pinned version
-upgrades or downgrades to that release.
+installs the current bundle only when `aws --version` does not succeed (missing,
+non-executable, or wrong architecture). A pinned version upgrades or downgrades
+to that release.
 
 Requires `unzip` and `curl` (installed by the role when an install runs).
 
@@ -51,6 +52,6 @@ Pin a version:
 | Variable             | Default              | Meaning                                                       |
 | -------------------- | -------------------- | ------------------------------------------------------------- |
 | `awscli_skip`        | `false`              | Full no-op.                                                   |
-| `awscli_version`     | `""`                 | Empty = latest bundle, only if missing. Set to enforce a pin. |
+| `awscli_version`     | `""`                 | Empty = latest if `aws --version` fails. Pin to enforce.      |
 | `awscli_install_dir` | `/usr/local/aws-cli` | `-i` install prefix.                                          |
 | `awscli_bin_dir`     | `/usr/local/bin`     | `-b` symlink directory.                                       |

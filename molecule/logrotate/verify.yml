@@ -4,11 +4,14 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Dry-run logrotate on the valid file
-      ansible.builtin.command: /usr/sbin/logrotate -d /etc/logrotate.d/app-logs
+    - name: Dry-run logrotate on the valid files
+      ansible.builtin.command: /usr/sbin/logrotate -d {{ item }}
       register: logrotate_debug
       changed_when: false
       failed_when: (logrotate_debug.stderr ~ '\n' ~ logrotate_debug.stdout) is search('^error', multiline=True)
+      loop:
+        - /etc/logrotate.d/app-logs
+        - /etc/logrotate.d/var-log-direct
 
     - name: Stat logrotate files
       ansible.builtin.stat:
@@ -18,19 +21,25 @@
         - /etc/logrotate.d/proxy-access
         - /etc/logrotate.d/stale-entry
         - /etc/logrotate.d/overlap-bad
+        - /etc/logrotate.d/var-log-direct
       register: logrotate_files
 
-    - name: Slurp proxy-access for sharedscripts
+    - name: Slurp rendered logrotate files
       ansible.builtin.slurp:
-        src: /etc/logrotate.d/proxy-access
-      register: logrotate_proxy
+        src: "{{ item }}"
+      loop:
+        - /etc/logrotate.d/proxy-access
+        - /etc/logrotate.d/var-log-direct
+      register: logrotate_slurps
 
-    - name: Assert files and sharedscripts
+    - name: Assert files, sharedscripts, and default su
       ansible.builtin.assert:
         that:
           - logrotate_files.results[0].stat.exists
           - logrotate_files.results[1].stat.exists
           - not logrotate_files.results[2].stat.exists
           - not logrotate_files.results[3].stat.exists
-          - "'sharedscripts' in (logrotate_proxy.content | b64decode)"
-          - "'postrotate' in (logrotate_proxy.content | b64decode)"
+          - logrotate_files.results[4].stat.exists
+          - "'sharedscripts' in (logrotate_slurps.results[0].content | b64decode)"
+          - "'postrotate' in (logrotate_slurps.results[0].content | b64decode)"
+          - "'su root root' in (logrotate_slurps.results[1].content | b64decode)"

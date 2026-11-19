@@ -4,6 +4,9 @@ Render one `/etc/logrotate.d/<name>` file per entry. All paths in an entry share
 one block. `logrotate -d` must not print a line starting with `error`, which
 rejects overlapping globs that would skip the whole file.
 
+Defaults include `su root root` so files directly under Ubuntu `/var/log`
+(group-writable `adm`) still rotate. Override `options.su` per entry if needed.
+
 ---
 
 ## Table of contents
@@ -64,7 +67,7 @@ Sharedscripts example:
 | Variable             | Default                                                               | Meaning                                                                     |
 | -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `logrotate_conf_dir` | `/etc/logrotate.d`                                                    | Destination directory.                                                      |
-| `logrotate_defaults` | daily / rotate 14 / compress / delaycompress / missingok / notifempty | Base options.                                                               |
+| `logrotate_defaults` | daily / rotate 14 / compress / delaycompress / missingok / notifempty | Base options, including `su root root`.                                     |
 | `logrotate_entries`  | `[]`                                                                  | `{name, paths, state, comment, options}`. `state: absent` removes the file. |
 
 `options` keys: frequency, rotate, compress, delaycompress, missingok, notifempty,
