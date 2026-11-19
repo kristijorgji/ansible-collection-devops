@@ -1,0 +1,39 @@
+---
+- name: Verify kristijorgji.devops.docker
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Query Docker engine version
+      ansible.builtin.command: docker version --format '{% raw %}{{.Server.Version}}{% endraw %}'
+      register: docker_engine_version_cmd
+      changed_when: false
+
+    - name: Query Compose plugin
+      ansible.builtin.command: docker compose version --short
+      register: docker_compose_plugin_cmd
+      changed_when: false
+
+    - name: Query standalone docker-compose
+      ansible.builtin.command: /usr/local/bin/docker-compose version --short
+      register: docker_compose_standalone_cmd
+      changed_when: false
+
+    - name: Run hello-world
+      ansible.builtin.command: docker run --rm hello-world
+      register: docker_hello
+      changed_when: false
+
+    - name: Assert Docker engine, Compose, and hello-world
+      ansible.builtin.assert:
+        that:
+          - docker_engine_version_cmd.rc == 0
+          - docker_engine_version_cmd.stdout | length > 0
+          - docker_compose_plugin_cmd.rc == 0
+          - docker_compose_standalone_cmd.stdout is search("5.6.1")
+          - "'Hello from Docker' in docker_hello.stdout"
+        fail_msg: >-
+          Docker verification failed on {{ inventory_hostname }}:
+          engine={{ docker_engine_version_cmd.stdout | default('') }}
+          plugin={{ docker_compose_plugin_cmd.stdout | default('') }}
+          standalone={{ docker_compose_standalone_cmd.stdout | default('') }}

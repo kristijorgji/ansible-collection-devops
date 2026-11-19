@@ -1,0 +1,12 @@
+---
+- name: Converge kristijorgji.devops.docker
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: kristijorgji.devops.docker
+      vars:
+        docker_users:
+          - "{{ ansible_user | default('root') }}"
+        docker_compose_install: both
+        docker_compose_standalone_version: v5.6.1

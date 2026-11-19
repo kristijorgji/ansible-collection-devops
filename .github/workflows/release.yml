@@ -1,0 +1,40 @@
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ansible-core
+        run: pip install ansible-core==2.21.2
+      - name: Assert galaxy.yml version matches tag
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(awk '/^version:/{print $2; exit}' galaxy.yml)"
+          echo "tag=${tag} galaxy=${ver}"
+          test "${ver}" = "${tag}"
+      - name: Build collection
+        run: |
+          mkdir -p dist
+          ansible-galaxy collection build --force --output-path dist
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+            --generate-notes --verify-tag
