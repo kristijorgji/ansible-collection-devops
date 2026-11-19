@@ -1,0 +1,36 @@
+---
+- name: Verify kristijorgji.devops.logrotate
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Dry-run logrotate on the valid file
+      ansible.builtin.command: /usr/sbin/logrotate -d /etc/logrotate.d/app-logs
+      register: logrotate_debug
+      changed_when: false
+      failed_when: (logrotate_debug.stderr ~ '\n' ~ logrotate_debug.stdout) is search('^error', multiline=True)
+
+    - name: Stat logrotate files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/logrotate.d/app-logs
+        - /etc/logrotate.d/proxy-access
+        - /etc/logrotate.d/stale-entry
+        - /etc/logrotate.d/overlap-bad
+      register: logrotate_files
+
+    - name: Slurp proxy-access for sharedscripts
+      ansible.builtin.slurp:
+        src: /etc/logrotate.d/proxy-access
+      register: logrotate_proxy
+
+    - name: Assert files and sharedscripts
+      ansible.builtin.assert:
+        that:
+          - logrotate_files.results[0].stat.exists
+          - logrotate_files.results[1].stat.exists
+          - not logrotate_files.results[2].stat.exists
+          - not logrotate_files.results[3].stat.exists
+          - "'sharedscripts' in (logrotate_proxy.content | b64decode)"
+          - "'postrotate' in (logrotate_proxy.content | b64decode)"

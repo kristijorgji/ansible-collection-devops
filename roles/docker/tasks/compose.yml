@@ -3,6 +3,10 @@
 # Plugin packages are installed in _engine.yml when source is ce.
 # distro + plugin-only is rejected in _facts.yml.
 
+- name: Resolve Docker facts for Compose
+  ansible.builtin.include_tasks: _facts.yml
+  when: docker_compose_github_arch is not defined
+
 - name: Note that distro source installs standalone Compose only
   ansible.builtin.debug:
     msg: >-
@@ -12,6 +16,24 @@
     - docker_install_source == "distro"
     - docker_compose_install == "both"
 
+- name: Query installed standalone Compose version
+  ansible.builtin.command: "{{ docker_compose_standalone_path }} version --short"
+  register: docker_compose_standalone_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: docker_want_compose_standalone | bool
+
+- name: Decide whether to install standalone Compose
+  ansible.builtin.set_fact:
+    docker_compose_standalone_needs_install: "{{ docker_compose_standalone_needed }}"
+  when: docker_want_compose_standalone | bool
+  vars:
+    docker_compose_standalone_present: "{{ docker_compose_standalone_installed.rc | default(1) == 0 }}"
+    docker_compose_standalone_current: "{{ docker_compose_standalone_installed.stdout | default('') | trim }}"
+    docker_compose_standalone_wanted: "{{ docker_compose_standalone_version | regex_replace('^v', '') }}"
+    docker_compose_standalone_needed: "{{ (not docker_compose_standalone_present) or (docker_compose_standalone_version != 'latest' and docker_compose_standalone_current != docker_compose_standalone_wanted) or (docker_compose_standalone_version == 'latest' and docker_compose_standalone_update | bool) }}"
+
 - name: Install Docker Compose standalone binary
   ansible.builtin.get_url:
     url: "{{ docker_compose_standalone_url }}"
@@ -19,7 +41,11 @@
     mode: "0755"
     owner: root
     group: root
-  when: docker_want_compose_standalone | bool
+    force: true
+    checksum: "sha256:{{ docker_compose_standalone_url }}.sha256"
+  when:
+    - docker_want_compose_standalone | bool
+    - docker_compose_standalone_needs_install | default(false) | bool
   vars:
     docker_compose_standalone_url: >-
       {{

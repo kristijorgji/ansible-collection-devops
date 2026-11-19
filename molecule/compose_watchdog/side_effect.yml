@@ -1,0 +1,19 @@
+---
+- name: Run then remove compose watchdog
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Run watchdog script once
+      ansible.builtin.command: /usr/local/bin/docker-compose-up.sh /var/log/docker-watchdog /opt/watchdog-yml /opt/watchdog-yaml
+      changed_when: false
+
+    - name: Set watchdog state absent
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.compose_watchdog
+        tasks_from: install
+      vars:
+        compose_watchdog_state: absent
+        compose_watchdog_paths:
+          - /opt/watchdog-yml
+          - /opt/watchdog-yaml

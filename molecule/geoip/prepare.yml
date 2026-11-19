@@ -1,0 +1,54 @@
+---
+- name: Prepare systemd hosts and a dummy GeoIP download
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Wait until systemd is available
+      ansible.builtin.raw: |
+        bash -c 'for i in $(seq 1 30); do
+          [ -d /run/systemd/system ] && exit 0
+          sleep 1
+        done
+        exit 1'
+      changed_when: false
+
+    - name: Enable Debian contrib for geoipupdate
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list
+        regexp: '^(deb .* main)$'
+        replace: '\1 contrib'
+      failed_when: false
+      when: ansible_distribution == "Debian"
+
+    - name: Enable Debian contrib on deb822 sources
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/debian.sources
+        regexp: 'Components: main(.*)$'
+        replace: 'Components: main contrib\1'
+      failed_when: false
+      when: ansible_distribution == "Debian"
+
+    - name: Refresh apt after enabling Debian contrib
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_distribution == "Debian"
+
+    - name: Ensure dummy GeoIP directory exists
+      ansible.builtin.file:
+        path: /opt/dummy-geoip
+        state: directory
+        mode: "0755"
+
+    - name: Write dummy GeoLite2 database
+      ansible.builtin.copy:
+        dest: /opt/dummy-geoip/GeoLite2-Country.mmdb
+        content: dummy-mmdb
+        mode: "0644"
+
+    - name: Serve dummy GeoIP database
+      ansible.builtin.command: python3 -m http.server 8099
+      args:
+        chdir: /opt/dummy-geoip
+      async: 3600
+      poll: 0

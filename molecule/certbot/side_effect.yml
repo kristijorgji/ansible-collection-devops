@@ -1,0 +1,57 @@
+---
+- name: Assert issuance failure still runs the post-hook
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read Pebble availability marker
+      ansible.builtin.slurp:
+        src: /etc/pebble/available
+      register: certbot_pebble_marker
+      failed_when: false
+
+    - name: Set Pebble availability fact
+      ansible.builtin.set_fact:
+        certbot_pebble_available: "{{ (certbot_pebble_marker.content | default('') | b64decode | trim) == '1' }}"
+
+    - name: Remove failing-domain marker files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/certbot-fail-pre.marker
+        - /tmp/certbot-fail-post.marker
+      when: certbot_pebble_available | bool
+
+    - name: Attempt a certificate against a dead ACME endpoint
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.certbot
+        tasks_from: certificates
+      vars:
+        certbot_admin_email: test@example.test
+        certbot_domains:
+          - fail.example
+        certbot_issue: true
+        certbot_live_dir: /tmp/certbot-fail-live
+        certbot_server: https://127.0.0.1:1/dir
+        certbot_extra_args:
+          - --no-verify-ssl
+        certbot_pre_hook: "echo pre > /tmp/certbot-fail-pre.marker"
+        certbot_post_hook: "echo post > /tmp/certbot-fail-post.marker"
+        certbot_renew_cron: false
+        certbot_renewal_hooks: []
+      ignore_errors: true
+      when: certbot_pebble_available | bool
+
+    - name: Slurp failed-issuance post-hook marker
+      ansible.builtin.slurp:
+        src: /tmp/certbot-fail-post.marker
+      register: certbot_fail_post
+      failed_when: false
+      when: certbot_pebble_available | bool
+
+    - name: Assert failed issuance still ran the post-hook
+      ansible.builtin.assert:
+        that:
+          - "'post' in (certbot_fail_post.content | default('') | b64decode)"
+      when: certbot_pebble_available | bool

@@ -1,0 +1,30 @@
+---
+- name: Converge kristijorgji.devops.logrotate
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Deploy valid logrotate entries
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.logrotate
+        tasks_from: install
+      vars:
+        logrotate_entries:
+          - name: app-logs
+            comment: Valid molecule entry
+            paths:
+              - /var/log/app-a/*.log
+            options:
+              copytruncate: true
+              rotate: 7
+          - name: proxy-access
+            paths:
+              - /var/log/app-a/*.log
+            options:
+              sharedscripts: true
+              maxsize: 50M
+              postrotate: "true"
+          - name: stale-entry
+            paths:
+              - /var/log/app-a/*.log
+            state: present

@@ -6,7 +6,7 @@
 #   2. slurp server_path/.ansible-deploy-commit → deployed_commit
 #   3. (optional) compare lockfile checksum on server vs build host
 #   4. build_needed = force_deploy OR commit differs OR lockfile differs
-#   5. Set deploy_build_needed (or deploy_check_fact_name for fitx365)
+#   5. Set deploy_build_needed (or deploy_check_fact_name)
 #   6. When build not needed: set commitHash + git_result.changed: false
 #
 # Prefer tasks_from: check_needed from consumers.

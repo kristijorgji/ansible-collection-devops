@@ -1,0 +1,19 @@
+---
+# Defaults for kristijorgji.devops.compose_watchdog.
+
+compose_watchdog_state: present
+compose_watchdog_paths: []
+compose_watchdog_schedule: "*/5 * * * *"
+compose_watchdog_log_dir: /var/log/docker-watchdog
+compose_watchdog_hooks_dir: /etc/docker-watchdog.d
+compose_watchdog_script_path: /usr/local/bin/docker-compose-up.sh
+compose_watchdog_cron_name: "Ansible: docker-compose up (watchdog)"
+compose_watchdog_cron_user: root
+compose_watchdog_compose_command: "docker compose"
+compose_watchdog_up_timeout: 60
+compose_watchdog_compose_files:
+  - compose.yaml
+  - compose.yml
+  - docker-compose.yaml
+  - docker-compose.yml
+compose_watchdog_recreate_paths: "{{ compose_watchdog_paths }}"

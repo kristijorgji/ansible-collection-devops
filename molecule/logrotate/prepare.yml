@@ -1,0 +1,32 @@
+---
+- name: Prepare systemd Molecule hosts
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait until systemd is available
+      ansible.builtin.raw: |
+        bash -c 'for i in $(seq 1 30); do
+          [ -d /run/systemd/system ] && exit 0
+          sleep 1
+        done
+        exit 1'
+      changed_when: false
+
+    - name: Create sample log directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/log/app-a
+        - /tmp/t/a
+
+    - name: Touch sample logs
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: touch
+        mode: "0644"
+      loop:
+        - /var/log/app-a/app.log
+        - /tmp/t/a/x.log

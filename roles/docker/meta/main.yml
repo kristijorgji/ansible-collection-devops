@@ -10,9 +10,11 @@ galaxy_info:
       versions:
         - jammy
         - noble
+        - resolute
     - name: Debian
       versions:
         - bookworm
+        - trixie
   galaxy_tags:
     - docker
     - compose

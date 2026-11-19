@@ -1,0 +1,9 @@
+---
+# Defaults for kristijorgji.devops.awscli.
+# Empty awscli_version installs the current bundle only when `aws` is missing.
+
+awscli_skip: false
+awscli_version: ""
+awscli_install_dir: /usr/local/aws-cli
+awscli_bin_dir: /usr/local/bin
+awscli_tmp_dir: /tmp

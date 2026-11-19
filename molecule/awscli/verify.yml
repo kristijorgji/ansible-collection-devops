@@ -1,0 +1,15 @@
+---
+- name: Verify kristijorgji.devops.awscli
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Query AWS CLI version
+      ansible.builtin.command: /usr/local/bin/aws --version
+      register: awscli_version_cmd
+      changed_when: false
+
+    - name: Assert the side_effect pin
+      ansible.builtin.assert:
+        that:
+          - "'aws-cli/2.22.35' in awscli_version_cmd.stdout"

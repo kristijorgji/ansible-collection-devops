@@ -1,0 +1,12 @@
+---
+# Defaults for kristijorgji.devops.logrotate.
+
+logrotate_conf_dir: /etc/logrotate.d
+logrotate_defaults:
+  frequency: daily
+  rotate: 14
+  compress: true
+  delaycompress: true
+  missingok: true
+  notifempty: true
+logrotate_entries: []

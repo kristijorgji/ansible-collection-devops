@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.certbot — `roles:` converges package install (and optional renew cron).
+- name: Install Certbot
+  ansible.builtin.import_tasks: install.yml

@@ -1,0 +1,18 @@
+---
+- name: Configure geoipupdate without contacting MaxMind
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Deploy geoipupdate config with fake credentials
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.geoip
+        tasks_from: install
+      vars:
+        geoip_edition_ids:
+          - GeoLite2-Country
+        geoip_maxmind_account_id: "0"
+        geoip_maxmind_license_key: "000000000000"
+        geoip_initial_update: never
+        geoip_cron_enabled: true
+        geoip_db_dir: /usr/share/GeoIP

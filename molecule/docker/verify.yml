@@ -24,16 +24,84 @@
       register: docker_hello
       changed_when: false
 
+    - name: Read docker-ce hold
+      ansible.builtin.command: apt-mark showhold
+      register: docker_holds
+      changed_when: false
+
+    - name: Stat Docker apt sources
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/apt/sources.list.d/docker.sources
+        - /etc/apt/sources.list.d/docker.list
+      register: docker_apt_files
+
+    - name: Read docker.sources
+      ansible.builtin.slurp:
+        src: /etc/apt/sources.list.d/docker.sources
+      register: docker_sources_slurp
+
+    - name: Read daemon.json
+      ansible.builtin.slurp:
+        src: /etc/docker/daemon.json
+      register: docker_daemon_slurp
+      failed_when: false
+
+    - name: Query iptables alternative
+      ansible.builtin.command: update-alternatives --query iptables
+      register: docker_iptables_query
+      changed_when: false
+      failed_when: false
+
     - name: Assert Docker engine, Compose, and hello-world
       ansible.builtin.assert:
         that:
           - docker_engine_version_cmd.rc == 0
           - docker_engine_version_cmd.stdout | length > 0
           - docker_compose_plugin_cmd.rc == 0
-          - docker_compose_standalone_cmd.stdout is search("5.6.1")
           - "'Hello from Docker' in docker_hello.stdout"
+          - docker_apt_files.results[0].stat.exists
+          - not docker_apt_files.results[1].stat.exists
+          - docker_expected_arch in (docker_sources_slurp.content | b64decode)
+          - docker_daemon_obj['log-driver'] | default('') == 'json-file'
+          - docker_daemon_obj['log-opts']['max-size'] | default('') == '10m'
         fail_msg: >-
           Docker verification failed on {{ inventory_hostname }}:
           engine={{ docker_engine_version_cmd.stdout | default('') }}
           plugin={{ docker_compose_plugin_cmd.stdout | default('') }}
           standalone={{ docker_compose_standalone_cmd.stdout | default('') }}
+      vars:
+        docker_expected_arch: "{{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+        docker_daemon_obj: >-
+          {{
+            (docker_daemon_slurp.content | b64decode | from_json)
+            if docker_daemon_slurp.content is defined
+            else {}
+          }}
+
+    - name: Read docker-ce dpkg version
+      ansible.builtin.command: dpkg-query -W -f=${Version} docker-ce
+      register: docker_ce_dpkg
+      changed_when: false
+      when: inventory_hostname in ['ubuntu2204', 'ubuntu2404']
+
+    - name: Assert Ubuntu 22.04/24.04 pin, holds, and Compose pin
+      ansible.builtin.assert:
+        that:
+          - "'29.9.2' in docker_ce_dpkg.stdout"
+          - docker_compose_standalone_cmd.stdout is search("5.6.1")
+          - "'docker-ce' in docker_holds.stdout"
+        fail_msg: >-
+          Pin failed on {{ inventory_hostname }}:
+          dpkg={{ docker_ce_dpkg.stdout | default('') }}
+          engine={{ docker_engine_version_cmd.stdout | default('') }}
+          standalone={{ docker_compose_standalone_cmd.stdout | default('') }}
+          holds={{ docker_holds.stdout | default('') }}
+      when: inventory_hostname in ['ubuntu2204', 'ubuntu2404']
+
+    - name: Assert iptables legacy on Ubuntu 22.04
+      ansible.builtin.assert:
+        that:
+          - "'/usr/sbin/iptables-legacy' in docker_iptables_query.stdout"
+      when: inventory_hostname == 'ubuntu2204'

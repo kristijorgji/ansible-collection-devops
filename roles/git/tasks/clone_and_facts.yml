@@ -22,7 +22,7 @@
   tags:
     - clone
 
-- name: "{{ projectName }} - clear stale checkout in place (preserve kj_proxy bind mount)"
+- name: "{{ projectName }} - clear stale checkout in place (preserve proxy bind mount)"
   ansible.builtin.include_tasks:
     file: "{{ role_path }}/../transfer/tasks/wipe_dir_keep_inode.yml"
     apply:

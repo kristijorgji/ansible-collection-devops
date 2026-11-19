@@ -1,0 +1,12 @@
+---
+- name: Converge kristijorgji.devops.awscli
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install a pinned AWS CLI v2
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.awscli
+        tasks_from: install
+      vars:
+        awscli_version: "2.17.0"

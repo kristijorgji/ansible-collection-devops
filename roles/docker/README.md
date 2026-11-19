@@ -5,8 +5,12 @@ Install Docker CE (or distro packages), enable the engine, optionally add users 
 
 This role does **not** deploy Compose stacks, reverse proxies, or container images.
 
-Debian family only in v1 (Ubuntu 22.04/24.04, Debian 12). Architectures amd64 and arm64
-are mapped from `ansible_architecture` — there is no silent amd64 fallback.
+Debian family only (Ubuntu 22.04/24.04/26.04, Debian 12/13). Architectures amd64 and
+arm64 are mapped from `ansible_architecture` — there is no silent amd64 fallback.
+
+v0.7.0 manages `/etc/docker/daemon.json` log rotation by default. Set
+`docker_daemon_log_rotation: false` and leave `docker_daemon_options: {}` for the old
+unmanaged-file behavior. When the file is managed, the role owns the whole JSON object.
 
 ---
 
@@ -23,11 +27,11 @@ are mapped from `ansible_architecture` — there is no silent amd64 fallback.
 
 ## Task files
 
-| File      | Purpose                                                           |
-| --------- | ----------------------------------------------------------------- |
-| `install` | Facts, apt repo, engine packages, service, group members, Compose |
-| `compose` | Compose plugin (CE) and/or standalone GitHub binary               |
-| `users`   | Append `docker_users` to group `docker`                           |
+| File      | Purpose                                                             |
+| --------- | ------------------------------------------------------------------- |
+| `install` | Facts, apt repo, engine packages, iptables, service, users, Compose |
+| `compose` | Compose plugin (CE) and/or standalone GitHub binary                 |
+| `users`   | Append `docker_users` to group `docker`                             |
 
 `main.yml` imports `install`, so `roles: [kristijorgji.devops.docker]` converges the engine.
 Call `tasks_from: install` for the same work from `include_role`.
@@ -42,12 +46,12 @@ When the play uses `--tags`, put matching tags in `apply.tags` on `include_role`
 | -------- | --------------------------------------------------------------------------- | ------------------------------------------------ |
 | empty    | No apt pin; `docker_packages_state: present` keeps the installed package    | n/a (standalone default is `latest`)             |
 | `latest` | Use `docker_packages_state: latest` (not this string on engine/plugin)      | GitHub `releases/latest/download`                |
-| pin      | Apt version string, e.g. `5:28.3.3-1~ubuntu.24.04~noble`                    | GitHub tag, e.g. `v5.6.1`                        |
+| pin      | Apt version, or short `29.9.2` expanded to `5:29.9.2-1~ubuntu.22.04~jammy`  | GitHub tag, e.g. `v5.6.1`                        |
 
-Production consumers typically pin the standalone binary and leave the engine at
-`present` (no surprise upgrades). `docker_packages_state: latest` upgrades CE packages.
+Short `X.Y.Z` pins expand using Ubuntu `ansible_distribution_version` or Debian
+`ansible_distribution_major_version`. Plugin pins omit the `5:` epoch.
 
-Pinned CE / plugin packages are `apt-mark` held.
+Pinned CE / plugin packages are `apt-mark` held. Differing pins unhold first.
 
 ---
 
@@ -56,26 +60,15 @@ Pinned CE / plugin packages are `apt-mark` held.
 - `docker_packages_state: present` does not bump installed CE packages.
 - `docker_packages_state: latest` does.
 - Switching `docker.io` → CE with `docker_remove_conflicts: true` (default) removes
-  conflicting distro packages and **may restart the engine**. The role reloads systemd,
-  resets a failed `docker.socket` (socket activation after a distro swap), then starts
-  `docker.socket` and `docker.service`. Containers with a restart policy come back.
-- Writing `/etc/docker/daemon.json` from a non-empty `docker_daemon_options` notifies a
-  restart. Leave it `{}` to leave an existing file unmanaged.
+  conflicting distro packages and **may restart the engine**.
+- Writing `/etc/docker/daemon.json` notifies a restart only when parsed JSON differs
+  from the effective config (log defaults combined with `docker_daemon_options`).
+- `docker_iptables_backend: ""` leaves iptables alternatives unchanged. `legacy` or
+  `nft` switches them and notifies a Docker restart.
 
 ---
 
 ## `install`
-
-Optional: `docker_users`, `docker_install_source` (`ce` \| `distro` \| `skip`),
-`docker_packages_state`, `docker_engine_version`, `docker_install_buildx`,
-`docker_remove_conflicts`, `docker_apt_channel`, `docker_apt_arch`, `docker_repo_url`,
-`docker_service_state`, `docker_service_enabled`, `docker_daemon_options`,
-`docker_compose_install` (`plugin` \| `standalone` \| `both` \| `none`),
-`docker_compose_plugin_version`, `docker_compose_standalone_version`,
-`docker_compose_standalone_path`, `docker_skip`.
-
-`docker_skip: true` is a full no-op. `docker_install_source: skip` still runs service,
-users, and Compose (no package changes).
 
 ```yaml
 - ansible.builtin.include_role:
@@ -104,7 +97,7 @@ Pin versions:
     name: kristijorgji.devops.docker
     tasks_from: install
   vars:
-    docker_engine_version: "5:28.3.3-1~ubuntu.24.04~noble"
+    docker_engine_version: "29.9.2"
     docker_compose_standalone_version: v5.6.1
     docker_packages_state: present
 ```
@@ -133,24 +126,38 @@ Skip the role:
 | ----------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
 | `docker_install_source`             | `ce`                                | `ce` = Docker Inc. repo. `distro` = OS `docker.io`. `skip` = do not change packages. |
 | `docker_packages_state`             | `present`                           | `present` or `latest`.                                                               |
-| `docker_engine_version`             | `""`                                | Empty = no pin. Otherwise apt version for `docker-ce` / `docker-ce-cli`.             |
+| `docker_engine_version`             | `""`                                | Empty = no pin. Short `X.Y.Z` or full apt version for `docker-ce` / `docker-ce-cli`. |
 | `docker_install_buildx`             | `true`                              | Install `docker-buildx-plugin` (CE) or `docker-buildx` (distro).                     |
 | `docker_remove_conflicts`           | `true`                              | When `ce`: remove `docker.io` and related distro packages (engine may restart).      |
 | `docker_apt_channel`                | `stable`                            | `stable` or `test`.                                                                  |
 | `docker_apt_arch`                   | `""`                                | Empty = from facts (`amd64` or `arm64`).                                             |
 | `docker_repo_url`                   | `https://download.docker.com/linux` | Base URL; distribution comes from `ansible_distribution`.                            |
+| `docker_repo_key_refresh`           | `false`                             | `true` re-downloads `/etc/apt/keyrings/docker.asc`.                                  |
+| `docker_repo_remove_legacy_list`    | `true`                              | Remove leftover `/etc/apt/sources.list.d/docker.list`.                               |
 | `docker_service_state`              | `started`                           | `service` state.                                                                     |
 | `docker_service_enabled`            | `true`                              | Enable on boot.                                                                      |
 | `docker_users`                      | `[]`                                | Usernames appended to group `docker`. Empty = no group changes.                      |
-| `docker_daemon_options`             | `{}`                                | If non-empty, write `/etc/docker/daemon.json` and restart.                           |
+| `docker_daemon_options`             | `{}`                                | Merged over log defaults into `/etc/docker/daemon.json`.                             |
+| `docker_daemon_log_rotation`        | `true`                              | Add json-file log-opts when writing daemon.json.                                     |
+| `docker_daemon_log_driver`          | `json-file`                         | `log-driver` when rotation is on.                                                    |
+| `docker_daemon_log_max_size`        | `10m`                               | `log-opts.max-size`.                                                                 |
+| `docker_daemon_log_max_file`        | `"5"`                               | `log-opts.max-file`.                                                                 |
 | `docker_compose_install`            | `both`                              | `plugin`, `standalone`, `both`, or `none`.                                           |
-| `docker_compose_plugin_version`     | `""`                                | Empty = no pin on `docker-compose-plugin`.                                           |
+| `docker_compose_plugin_version`     | `""`                                | Empty = no pin on `docker-compose-plugin`. Short `X.Y.Z` is expanded.                |
 | `docker_compose_standalone_version` | `latest`                            | `latest` or a GitHub tag such as `v5.6.1`.                                           |
 | `docker_compose_standalone_path`    | `/usr/local/bin/docker-compose`     | Standalone binary path.                                                              |
+| `docker_compose_standalone_update`  | `false`                             | When version is `latest`, re-download the binary.                                    |
 | `docker_skip`                       | `false`                             | If true, the role is a no-op.                                                        |
+| `docker_extra_packages`             | `[]`                                | Extra apt names installed with the engine.                                           |
+| `docker_python_sdk`                 | `none`                              | `none`, `apt` (`python3-docker`), or `pip`.                                          |
+| `docker_python_sdk_pip_version`     | `""`                                | Pip pin when `docker_python_sdk` is `pip`.                                           |
+| `docker_iptables_backend`           | `""`                                | Empty = leave alternatives. `legacy` or `nft` (notifies Docker restart).             |
 
 `docker_install_source: distro` plus `docker_compose_install: plugin` fails (no CE plugin).
 `distro` plus `both` installs the standalone binary only.
+
+`docker_skip: true` is a full no-op. `docker_install_source: skip` still runs service,
+users, and Compose (no package changes).
 
 ---
 
@@ -158,7 +165,8 @@ Skip the role:
 
 Optional: `docker_compose_install`, `docker_compose_standalone_version`,
 `docker_compose_standalone_path`. Requires facts from `install` (or a previous
-`install` on the same host) so Compose GitHub arch is set.
+`install` on the same host) so Compose GitHub arch is set. A pinned standalone
+binary is re-downloaded only when `docker-compose version --short` differs.
 
 ```yaml
 - ansible.builtin.include_role:

@@ -1,0 +1,21 @@
+---
+# Public tasks_from: recreate — force-recreate stacks that have a compose file.
+
+- name: Find compose files in recreate paths
+  ansible.builtin.find:
+    paths: "{{ item }}"
+    patterns: "{{ compose_watchdog_compose_files }}"
+    file_type: file
+  loop: "{{ compose_watchdog_recreate_paths }}"
+  register: compose_watchdog_recreate_find
+  failed_when: false
+
+- name: Recreate compose stacks
+  ansible.builtin.shell: "{{ compose_watchdog_compose_command }} up -d --force-recreate"
+  args:
+    chdir: "{{ item.item }}"
+    executable: /bin/bash
+  loop: "{{ compose_watchdog_recreate_find.results | default([]) }}"
+  when: (item.matched | default(0) | int) > 0
+  loop_control:
+    label: "{{ item.item }}"

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Idempotent compose watchdog: compose up -d for each project directory.
+# Optional executable drop-ins in DOCKER_WATCHDOG_HOOKS_DIR run before compose up.
+set -euo pipefail
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+LOG_DIR="${1:?log directory required}"
+shift
+
+HOOKS_DIR="${DOCKER_WATCHDOG_HOOKS_DIR:-{{ compose_watchdog_hooks_dir }}}"
+COMPOSE_CMD="{{ compose_watchdog_compose_command }}"
+UP_TIMEOUT="{{ compose_watchdog_up_timeout | int }}"
+COMPOSE_FILES=(
+{% for filename in compose_watchdog_compose_files %}
+	"{{ filename }}"
+{% endfor %}
+)
+
+log_line() {
+	printf '\n%s %s\n' "$(date -Is)" "$2" >>"$1"
+}
+
+has_compose_file() {
+	local dir="$1"
+	local filename
+	for filename in "${COMPOSE_FILES[@]}"; do
+		if [[ -f "${dir}/${filename}" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+mkdir -p "$LOG_DIR"
+LOCK_FILE="${LOG_DIR}/.docker-compose-up.lock"
+
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+	printf '%s %s\n' "$(date -Is)" "=== watchdog skipped: previous run still holds lock ===" \
+		>>"${LOG_DIR}/watchdog.lock-skipped.log"
+	exit 0
+fi
+
+if [[ -d "${HOOKS_DIR}" ]]; then
+	export WATCHDOG_LOG_DIR="${LOG_DIR}"
+	for hook in "${HOOKS_DIR}"/*.sh; do
+		if [[ -x "${hook}" ]]; then
+			"${hook}" >>"${LOG_DIR}/hooks.log" 2>&1 || true
+		fi
+	done
+fi
+
+for dir in "$@"; do
+	if has_compose_file "${dir}"; then
+		name="$(basename "${dir}")"
+		logfile="${LOG_DIR}/${name}.log"
+		log_line "$logfile" "=== compose up -d start: ${dir} ==="
+		start_ts=$(date +%s)
+		set +e
+		if [[ "${UP_TIMEOUT}" -gt 0 ]]; then
+			# shellcheck disable=SC2086
+			(cd "${dir}" && timeout "${UP_TIMEOUT}" ${COMPOSE_CMD} up -d) >>"$logfile" 2>&1
+		else
+			# shellcheck disable=SC2086
+			(cd "${dir}" && ${COMPOSE_CMD} up -d) >>"$logfile" 2>&1
+		fi
+		rc=$?
+		set -e
+		duration=$(($(date +%s) - start_ts))
+		log_line "$logfile" "=== compose up -d finished: exit=${rc} duration=${duration}s ==="
+	fi
+done

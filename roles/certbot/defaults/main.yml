@@ -1,0 +1,41 @@
+---
+# Defaults for kristijorgji.devops.certbot.
+
+certbot_skip: false
+certbot_packages:
+  - certbot
+certbot_extra_packages: []
+certbot_apt_cache_valid_time: 3600
+
+certbot_renew_cron: false
+certbot_renew_cron_name: "Certbot renew attempt every day at midnight"
+certbot_renew_cron_minute: "0"
+certbot_renew_cron_hour: "0"
+certbot_renew_cron_job: certbot renew
+
+certbot_admin_email: ""
+certbot_domains: []
+certbot_apex_domain: ""
+certbot_www_domain: ""
+certbot_include_www: false
+certbot_extra_domains: []
+
+certbot_issue: true
+certbot_live_dir: /etc/letsencrypt/live
+
+certbot_challenge: standalone
+certbot_webroot_path: ""
+certbot_preferred_challenges: http
+certbot_staging: false
+certbot_server: ""
+certbot_key_type: ""
+certbot_staple_ocsp: false
+certbot_extra_args: []
+
+certbot_pre_hook: ""
+certbot_post_hook: ""
+
+certbot_renewal_hooks: []
+certbot_renewal_hooks_dir: ""
+certbot_renewal_hook_name: ""
+certbot_renewal_hooks_template: false

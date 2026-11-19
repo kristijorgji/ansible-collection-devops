@@ -63,7 +63,7 @@ and exit `0` so a consumer deploy is not failed by hygiene.
 
 `history.json` is **not** pre-seeded. It is not in git. After the first successful
 mutating run it is stored at `s3://<bucket>/<prefix>.janitor/history.json`
-(for example `s3://prona365-web-assets-prod/web/.janitor/history.json`).
+(for example `s3://example-web-assets/web/.janitor/history.json`).
 
 `.janitor` is a reserved CommonPrefix (like `shared/`): never treated as a release
 id and never deleted. Existing IAM that already allows `prefix*` is enough.

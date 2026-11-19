@@ -1,0 +1,47 @@
+---
+- name: Converge kristijorgji.devops.certbot
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Read Pebble availability marker
+      ansible.builtin.slurp:
+        src: /etc/pebble/available
+      register: certbot_pebble_marker
+      failed_when: false
+
+    - name: Install Certbot
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.certbot
+        tasks_from: install
+      vars:
+        certbot_renew_cron: true
+
+    - name: Issue certificates and deploy hooks
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.certbot
+        tasks_from: certificates
+      vars:
+        certbot_admin_email: test@example.test
+        certbot_domains:
+          - test.example
+          - www.test.example
+        certbot_issue: "{{ (certbot_pebble_marker.content | default('') | b64decode | trim) == '1' }}"
+        certbot_server: https://127.0.0.1:14000/dir
+        certbot_extra_args:
+          - --no-verify-ssl
+        certbot_pre_hook: "echo pre > /tmp/certbot-issue-pre.marker"
+        certbot_post_hook: "echo post > /tmp/certbot-issue-post.marker"
+        certbot_renew_cron: true
+        certbot_renewal_hooks:
+          - stage: pre
+            dest_name: content-pre.sh
+            content: |
+              #!/bin/sh
+              echo content-pre >> /tmp/certbot-content.marker
+          - stage: deploy
+            dest_name: src-deploy.sh
+            src: "{{ playbook_dir }}/files/deploy.sh"
+          - stage: post
+            dest_name: src-post.sh
+            src: "{{ playbook_dir }}/files/pre.sh"

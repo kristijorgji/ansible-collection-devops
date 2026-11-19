@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: awscli
+  author: Kristi Jorgji
+  description: Install the AWS CLI v2 zip bundle for amd64 or arm64.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+  galaxy_tags:
+    - aws
+    - cli
+dependencies: []

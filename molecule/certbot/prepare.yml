@@ -1,0 +1,68 @@
+---
+- name: Prepare systemd Molecule hosts and Pebble
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Wait until systemd is available
+      ansible.builtin.raw: |
+        bash -c 'for i in $(seq 1 30); do
+          [ -d /run/systemd/system ] && exit 0
+          sleep 1
+        done
+        exit 1'
+      changed_when: false
+
+    - name: Install openssl for Pebble TLS
+      ansible.builtin.apt:
+        name:
+          - openssl
+          - ca-certificates
+        state: present
+        update_cache: true
+
+    - name: Ensure Pebble config directory exists
+      ansible.builtin.file:
+        path: /etc/pebble
+        state: directory
+        mode: "0755"
+
+    - name: Generate Pebble TLS certificate
+      ansible.builtin.command: >
+        openssl req -x509 -newkey rsa:2048 -nodes
+        -keyout /etc/pebble/key.pem
+        -out /etc/pebble/cert.pem
+        -days 1
+        -subj /CN=localhost
+      args:
+        creates: /etc/pebble/cert.pem
+
+    - name: Copy Pebble config
+      ansible.builtin.copy:
+        src: pebble-config.json
+        dest: /etc/pebble/pebble-config.json
+        mode: "0644"
+
+    - name: Download Pebble ACME server
+      ansible.builtin.get_url:
+        url: "https://github.com/letsencrypt/pebble/releases/download/v2.6.0/pebble_linux-{{ pebble_arch }}"
+        dest: /usr/local/bin/pebble
+        mode: "0755"
+      register: pebble_download
+      failed_when: false
+      vars:
+        pebble_arch: "{{ 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else 'amd64' }}"
+
+    - name: Start Pebble ACME server
+      ansible.builtin.command: /usr/local/bin/pebble -config /etc/pebble/pebble-config.json
+      async: 3600
+      poll: 0
+      environment:
+        PEBBLE_VA_ALWAYS_VALID: "1"
+      when: pebble_download.status_code | default(0) | int == 200
+
+    - name: Record Pebble availability
+      ansible.builtin.copy:
+        dest: /etc/pebble/available
+        content: "{{ '1' if pebble_download.status_code | default(0) | int == 200 else '0' }}\n"
+        mode: "0644"
