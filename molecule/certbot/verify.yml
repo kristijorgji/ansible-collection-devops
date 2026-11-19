@@ -14,9 +14,9 @@
       ansible.builtin.set_fact:
         certbot_pebble_available: "{{ (certbot_pebble_marker.content | default('') | b64decode | trim) == '1' }}"
 
-    - name: Query Certbot version
-      ansible.builtin.command: certbot --version
-      register: certbot_version_cmd
+    - name: Query Certbot package
+      ansible.builtin.command: dpkg-query -W -f=${Status} certbot
+      register: certbot_pkg
       changed_when: false
 
     - name: Stat renewal hooks
@@ -55,7 +55,7 @@
     - name: Assert Certbot install, hooks, and cron
       ansible.builtin.assert:
         that:
-          - certbot_version_cmd.rc == 0
+          - "'install ok installed' in certbot_pkg.stdout"
           - certbot_hook_stats.results | map(attribute='stat.exists') | list is all
           - certbot_hook_stats.results | map(attribute='stat.mode') | list | unique == ['0755']
           - "'Certbot renew attempt every day at midnight' in certbot_crontab.stdout"

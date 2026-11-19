@@ -28,20 +28,27 @@
           - "'geoipupdate GeoLite2-Country' in geoip_crontab.stdout"
 
     - name: Attempt verify-only against a missing database
-      ansible.builtin.include_role:
-        name: kristijorgji.devops.geoip
-        tasks_from: install
-      vars:
-        geoip_enabled: true
-        geoip_edition_ids:
-          - GeoLite2-Missing
-        geoip_db_dir: /tmp/geoip-missing
-        geoip_initial_update: never
-        geoip_cron_enabled: false
-      ignore_errors: true
-      register: geoip_missing
+      block:
+        - name: Run geoip against a missing database
+          ansible.builtin.include_role:
+            name: kristijorgji.devops.geoip
+            tasks_from: install
+          vars:
+            geoip_enabled: true
+            geoip_edition_ids:
+              - GeoLite2-Missing
+            geoip_db_dir: /tmp/geoip-missing
+            geoip_initial_update: never
+            geoip_cron_enabled: false
+        - name: Missing database must not succeed
+          ansible.builtin.set_fact:
+            geoip_missing_failed: false
+      rescue:
+        - name: Record expected missing-database failure
+          ansible.builtin.set_fact:
+            geoip_missing_failed: true
 
     - name: Assert missing database fails
       ansible.builtin.assert:
         that:
-          - geoip_missing is failed
+          - geoip_missing_failed | default(false) | bool

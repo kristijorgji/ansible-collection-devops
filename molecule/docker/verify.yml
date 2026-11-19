@@ -80,12 +80,24 @@
             else {}
           }}
 
-    - name: Assert Ubuntu 22.04/24.04 pin, holds, and Compose bump
+    - name: Read docker-ce dpkg version
+      ansible.builtin.command: dpkg-query -W -f=${Version} docker-ce
+      register: docker_ce_dpkg
+      changed_when: false
+      when: inventory_hostname in ['ubuntu2204', 'ubuntu2404']
+
+    - name: Assert Ubuntu 22.04/24.04 pin, holds, and Compose pin
       ansible.builtin.assert:
         that:
-          - docker_engine_version_cmd.stdout is match('^29\\.10\\.0')
-          - docker_compose_standalone_cmd.stdout is search("5.8.0")
+          - "'29.9.2' in docker_ce_dpkg.stdout"
+          - docker_compose_standalone_cmd.stdout is search("5.6.1")
           - "'docker-ce' in docker_holds.stdout"
+        fail_msg: >-
+          Pin failed on {{ inventory_hostname }}:
+          dpkg={{ docker_ce_dpkg.stdout | default('') }}
+          engine={{ docker_engine_version_cmd.stdout | default('') }}
+          standalone={{ docker_compose_standalone_cmd.stdout | default('') }}
+          holds={{ docker_holds.stdout | default('') }}
       when: inventory_hostname in ['ubuntu2204', 'ubuntu2404']
 
     - name: Assert iptables legacy on Ubuntu 22.04

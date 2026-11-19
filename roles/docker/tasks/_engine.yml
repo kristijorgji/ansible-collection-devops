@@ -64,6 +64,7 @@
     state: "{{ docker_packages_state }}"
     update_cache: true
     allow_change_held_packages: true
+    allow_downgrade: true
   when: docker_install_source == "ce"
 
 - name: Hold pinned Docker CE packages
