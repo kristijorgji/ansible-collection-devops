@@ -1,6 +1,12 @@
 ---
 # Private: optional daily certbot renew cron (package timer already exists on systemd).
 
+- name: Install cron for Certbot renew
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  when: certbot_renew_cron | bool
+
 - name: Install Certbot renew cron
   ansible.builtin.cron:
     name: "{{ certbot_renew_cron_name }}"

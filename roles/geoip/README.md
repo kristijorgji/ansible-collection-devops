@@ -1,6 +1,7 @@
 # Role: `kristijorgji.devops.geoip`
 
-Install MaxMind GeoLite2 databases. Credentials use `geoipupdate` plus a weekly cron.
+Install MaxMind GeoLite2 databases. Credentials use `geoipupdate` plus a weekly
+cron (the `cron` package is installed when that cron is enabled).
 A download URL is a one-shot alternative. Enabled with neither only verifies files
 already on disk.
 

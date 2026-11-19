@@ -56,6 +56,14 @@
     - geoip_use_geoipupdate | bool
     - geoip_initial_update == "always" or (geoip_initial_update == "missing" and (geoip_db_stats_before.results | default([]) | rejectattr('stat.exists') | list | length > 0))
 
+- name: Install cron for geoipupdate
+  ansible.builtin.apt:
+    name: cron
+    state: present
+  when:
+    - geoip_use_geoipupdate | bool
+    - geoip_cron_enabled | bool
+
 - name: Install weekly geoipupdate cron
   ansible.builtin.cron:
     name: "{{ geoip_cron_name }}"

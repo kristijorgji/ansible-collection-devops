@@ -18,6 +18,7 @@
         path: /etc/apt/sources.list
         regexp: '^(deb .* main)$'
         replace: '\1 contrib'
+      failed_when: false
       when: ansible_distribution == "Debian"
 
     - name: Enable Debian contrib on deb822 sources
@@ -26,6 +27,11 @@
         regexp: 'Components: main(.*)$'
         replace: 'Components: main contrib\1'
       failed_when: false
+      when: ansible_distribution == "Debian"
+
+    - name: Refresh apt after enabling Debian contrib
+      ansible.builtin.apt:
+        update_cache: true
       when: ansible_distribution == "Debian"
 
     - name: Ensure dummy GeoIP directory exists

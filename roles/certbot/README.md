@@ -2,7 +2,7 @@
 
 Install Certbot from distro packages, optionally issue HTTP-01 certificates, and deploy
 Let's Encrypt renewal hooks. The package's systemd timer is the default renew path;
-an extra root cron is opt-in.
+an extra root cron is opt-in and installs the `cron` package.
 
 `--staple-ocsp` is off by default (Let's Encrypt ended OCSP stapling in 2025).
 

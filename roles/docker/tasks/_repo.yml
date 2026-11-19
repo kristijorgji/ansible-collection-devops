@@ -40,13 +40,16 @@
     signed_by: /etc/apt/keyrings/docker.asc
     state: present
     enabled: true
+  register: docker_repo_deb822
 
 - name: Remove leftover one-line Docker apt list
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/docker.list
     state: absent
+  register: docker_repo_legacy_list
   when: docker_repo_remove_legacy_list | bool
 
 - name: Update apt cache after Docker repo
   ansible.builtin.apt:
     update_cache: true
+  when: docker_repo_deb822 is changed or docker_repo_legacy_list is changed
