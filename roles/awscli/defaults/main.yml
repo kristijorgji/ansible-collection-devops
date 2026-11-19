@@ -1,6 +1,8 @@
 ---
 # Defaults for kristijorgji.devops.awscli.
-# Empty awscli_version installs the current bundle only when `aws` is missing.
+# Empty awscli_version installs the current bundle only when `aws --version`
+# does not run successfully. A wrong-arch or otherwise unusable binary is
+# treated as missing.
 
 awscli_skip: false
 awscli_version: ""

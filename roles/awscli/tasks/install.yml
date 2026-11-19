@@ -44,17 +44,20 @@
 
 - name: Parse installed AWS CLI version
   ansible.builtin.set_fact:
-    awscli_installed_version: "{{ awscli_installed_match }}"
+    awscli_installed_version: "{{ awscli_installed_parsed }}"
     awscli_bundle_arch: "{{ awscli_arch_map[ansible_architecture] }}"
+    awscli_query_ok: "{{ (awscli_version_cmd.rc | default(1) | int) == 0 }}"
   when: not awscli_skip | bool
   vars:
     awscli_version_text: "{{ (awscli_version_cmd.stdout | default('')) ~ ' ' ~ (awscli_version_cmd.stderr | default('')) }}"
-    awscli_installed_match: "{{ awscli_version_text | regex_search('aws-cli/[0-9][^ ]*') | default('') | regex_replace('^aws-cli/', '') }}"
+    awscli_installed_parsed: "{{ awscli_version_text | regex_search('aws-cli/[0-9][^ ]*') | default('', true) | regex_replace('^aws-cli/', '') }}"
 
 - name: Decide whether to install the AWS CLI
   ansible.builtin.set_fact:
-    awscli_needs_install: "{{ awscli_installed_version | length == 0 or (awscli_version | length > 0 and awscli_installed_version != awscli_version) }}"
+    awscli_needs_install: "{{ awscli_needs_install_effective }}"
   when: not awscli_skip | bool
+  vars:
+    awscli_needs_install_effective: "{{ (not (awscli_query_ok | bool)) or (awscli_installed_version | length == 0) or (awscli_version | length > 0 and awscli_installed_version != awscli_version) }}"
 
 - name: Install unzip and curl for the AWS CLI bundle
   ansible.builtin.apt:

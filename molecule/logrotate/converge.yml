@@ -28,3 +28,8 @@
             paths:
               - /var/log/app-a/*.log
             state: present
+          - name: var-log-direct
+            paths:
+              - /var/log/molecule-direct.log
+            options:
+              copytruncate: true
