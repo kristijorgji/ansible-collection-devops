@@ -1,0 +1,97 @@
+---
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Lint collection
+        run: make lint
+
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ansible-core
+        run: pip install ansible-core==2.21.2
+      - name: Build collection
+        run: |
+          mkdir -p dist
+          ansible-galaxy collection build --force --output-path dist
+          ls -la dist/*.tar.gz
+      - name: Upload collection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  molecule:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        role:
+          - docker
+        runner:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+        ansible-core:
+          - "2.21.2"
+        include:
+          - role: docker
+            runner: ubuntu-24.04
+            ansible-core: "2.19.10"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Molecule and ansible-core
+        run: |
+          pip install -r requirements-dev.txt
+          pip install "ansible-core==${{ matrix.ansible-core }}"
+      - name: Run Molecule
+        env:
+          ROLE: ${{ matrix.role }}
+        run: make test-role ROLE="${ROLE}"
+
+  ci-ok:
+    if: always()
+    needs:
+      - lint
+      - build
+      - molecule
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require lint, build, and molecule
+        run: |
+          echo "lint=${{ needs.lint.result }}"
+          echo "build=${{ needs.build.result }}"
+          echo "molecule=${{ needs.molecule.result }}"
+          test "${{ needs.lint.result }}" = "success"
+          test "${{ needs.build.result }}" = "success"
+          test "${{ needs.molecule.result }}" = "success"

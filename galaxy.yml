@@ -30,4 +30,14 @@ build_ignore:
   - .git
   - .gitignore
   - .ansible
+  - .idea
+  - .github
+  - molecule
+  - dist
+  - requirements-dev.txt
+  - __pycache__
+  - "*.pyc"
+  - git_hooks
+  - scripts
+  - Makefile
   - "*.tar.gz"

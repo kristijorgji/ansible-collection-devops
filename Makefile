@@ -1,10 +1,12 @@
-AL_VERSION := latest
-ML_VERSION := latest
-PRETTIER_IMAGE := tmknom/prettier:latest
+AL_VERSION := 0.79.54
+ML_VERSION := v0.24.1
+PRETTIER_IMAGE := tmknom/prettier:3.6.2
+SHELLCHECK_IMAGE := koalaman/shellcheck-alpine:stable
 
-.PHONY: lint lint-ansible lint-markdown lint-role-docs lint-no-nested-include-role fix fix-yaml fix-markdown verify-hooks
+.PHONY: lint lint-ansible lint-markdown lint-role-docs lint-no-nested-include-role lint-shell \
+	fix fix-yaml fix-markdown verify-hooks test-role test
 
-lint: lint-ansible lint-markdown lint-no-nested-include-role lint-role-docs ## Run ansible-lint + markdownlint + role checks
+lint: lint-ansible lint-markdown lint-no-nested-include-role lint-role-docs lint-shell ## Run ansible-lint + markdownlint + role + shell checks
 
 lint-ansible: ## Ansible + YAML via ansible-lint (embeds yamllint)
 	@echo "################################################################################"
@@ -32,6 +34,13 @@ lint-role-docs: ## Require role README coverage for every tasks_from file
 	@echo "# check-role-docs"
 	@echo "################################################################################"
 	@./scripts/check-role-docs.sh
+
+lint-shell: ## ShellCheck scripts, git hooks, and role files/*.sh
+	@echo "################################################################################"
+	@echo "# shellcheck"
+	@echo "################################################################################"
+	@docker run --rm -v "$(PWD):/mnt" -w /mnt $(SHELLCHECK_IMAGE) \
+		sh -c 'shellcheck scripts/*.sh git_hooks/pre-commit git_hooks/pre-commit.d/* roles/*/files/*.sh'
 
 fix: fix-yaml fix-markdown ## Auto-fix YAML + markdown
 
@@ -67,3 +76,16 @@ fix-markdown: ## Prettier + markdownlint --fix on *.md
 
 verify-hooks: ## Confirm core.hooksPath=./git_hooks
 	@./scripts/check-hooks.sh
+
+test-role: ## Molecule one scenario: make test-role ROLE=docker
+	@if [ -z "$(ROLE)" ]; then echo "ERROR: set ROLE= (example: make test-role ROLE=docker)" >&2; exit 1; fi
+	@./scripts/molecule.sh $(ROLE)
+
+test: ## Molecule for every scenario under molecule/*/
+	@found=0; \
+	for d in molecule/*/; do \
+		[ -d "$$d" ] || continue; \
+		found=1; \
+		./scripts/molecule.sh "$$(basename "$$d")" || exit 1; \
+	done; \
+	if [ "$$found" -eq 0 ]; then echo "ERROR: no molecule/*/ scenarios" >&2; exit 1; fi

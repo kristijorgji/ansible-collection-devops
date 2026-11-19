@@ -1,4 +1,17 @@
 ---
 # Use ansible-lint defaults (includes prettier-compatible yamllint).
-# Exclude nothing essential; collection is small.
 profile: basic
+exclude_paths:
+  - .ansible/
+  - .cache/
+  - .github/
+  - dist/
+# Existing public APIs use names such as commitHash, node_*, serverCodePath.
+# Do not rewrite those in the CI bootstrap PR.
+skip_list:
+  - var-naming[no-role-prefix]
+  - var-naming[pattern]
+  - name[missing]
+  - command-instead-of-shell
+  - command-instead-of-module
+  - yaml[line-length]

@@ -12,6 +12,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 
 - [Install](#install)
 - [Lint / format / hooks](#lint--format--hooks)
+- [Testing / CI](#testing--ci)
 - [Roles](#roles)
 - [Quick examples](#quick-examples)
 - [Requirements](#requirements)
@@ -49,6 +50,33 @@ Requires Docker for ansible-lint / markdownlint / prettier. Role-doc and
 When the play uses `--tags`, put matching tags in `apply.tags` on consumer
 `include_role`. Collection role tasks must use `include_tasks` (not nested
 `include_role`) so those tags reach inner steps.
+
+---
+
+## Testing / CI
+
+Requires Docker (for lint images and Molecule) plus a venv with
+[`requirements-dev.txt`](requirements-dev.txt).
+
+```shell
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+make lint                  # ansible-lint, markdownlint, role checks, shellcheck
+make test-role ROLE=docker # one Molecule scenario (amd64 and arm64 images)
+make test                  # every molecule/*/ scenario
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `lint`, `build`, and Molecule on
+`ubuntu-24.04` and `ubuntu-24.04-arm` with ansible-core 2.21.2, plus Molecule on
+amd64 with ansible-core 2.19.10. The `ci-ok` job is the required status check.
+
+Molecule platforms: Ubuntu 22.04/24.04/26.04 and Debian 12/13 (`geerlingguy` systemd
+images), privileged, with anonymous `/var/lib/docker` and `/var/lib/containerd`
+volumes.
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`: the tag (without `v`) must
+equal `galaxy.yml` `version`, then a GitHub Release is created with the collection
+tarball.
 
 ---
 

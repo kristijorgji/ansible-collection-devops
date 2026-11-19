@@ -4,3 +4,6 @@
 .ansible/
 __pycache__/
 *.pyc
+.cache/
+dist/
+.venv/
