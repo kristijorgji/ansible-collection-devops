@@ -1,0 +1,47 @@
+---
+- name: Verify kristijorgji.devops.geoip
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stat downloaded GeoIP database
+      ansible.builtin.stat:
+        path: /usr/share/GeoIP/GeoLite2-Country.mmdb
+      register: geoip_db
+
+    - name: Slurp GeoIP.conf
+      ansible.builtin.slurp:
+        src: /etc/GeoIP.conf
+      register: geoip_conf
+
+    - name: Read root crontab
+      ansible.builtin.command: crontab -l
+      register: geoip_crontab
+      changed_when: false
+
+    - name: Assert database, conf, and cron
+      ansible.builtin.assert:
+        that:
+          - geoip_db.stat.exists
+          - "'AccountID 0' in (geoip_conf.content | b64decode)"
+          - "'EditionIDs GeoLite2-Country' in (geoip_conf.content | b64decode)"
+          - "'geoipupdate GeoLite2-Country' in geoip_crontab.stdout"
+
+    - name: Attempt verify-only against a missing database
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.geoip
+        tasks_from: install
+      vars:
+        geoip_enabled: true
+        geoip_edition_ids:
+          - GeoLite2-Missing
+        geoip_db_dir: /tmp/geoip-missing
+        geoip_initial_update: never
+        geoip_cron_enabled: false
+      ignore_errors: true
+      register: geoip_missing
+
+    - name: Assert missing database fails
+      ansible.builtin.assert:
+        that:
+          - geoip_missing is failed

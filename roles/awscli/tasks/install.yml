@@ -1,0 +1,130 @@
+---
+# Public tasks_from: install — AWS CLI v2 zip bundle.
+
+- name: Skip kristijorgji.devops.awscli
+  ansible.builtin.debug:
+    msg: awscli_skip is true; not installing the AWS CLI.
+  when: awscli_skip | bool
+
+- name: Gather facts required for AWS CLI
+  ansible.builtin.setup:
+    gather_subset:
+      - min
+  when:
+    - not awscli_skip | bool
+    - ansible_architecture is not defined
+
+- name: Map hardware architecture to AWS CLI bundle names
+  ansible.builtin.set_fact:
+    awscli_arch_map:
+      x86_64: x86_64
+      amd64: x86_64
+      aarch64: aarch64
+      arm64: aarch64
+  when: not awscli_skip | bool
+
+- name: Fail when ansible_architecture is not mapped
+  ansible.builtin.fail:
+    msg: >-
+      Unsupported architecture {{ ansible_architecture }}. Supported:
+      x86_64, amd64, aarch64, arm64.
+  when:
+    - not awscli_skip | bool
+    - ansible_architecture not in awscli_arch_map
+
+- name: Query installed AWS CLI version
+  ansible.builtin.command: "{{ awscli_bin_dir }}/aws --version"
+  environment:
+    PATH: "{{ awscli_bin_dir }}:/usr/local/bin:/usr/bin:/bin"
+  register: awscli_version_cmd
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: not awscli_skip | bool
+
+- name: Parse installed AWS CLI version
+  ansible.builtin.set_fact:
+    awscli_installed_version: "{{ awscli_installed_match }}"
+    awscli_bundle_arch: "{{ awscli_arch_map[ansible_architecture] }}"
+  when: not awscli_skip | bool
+  vars:
+    awscli_version_text: "{{ (awscli_version_cmd.stdout | default('')) ~ ' ' ~ (awscli_version_cmd.stderr | default('')) }}"
+    awscli_installed_match: "{{ awscli_version_text | regex_search('aws-cli/[0-9][^ ]*') | default('') | regex_replace('^aws-cli/', '') }}"
+
+- name: Decide whether to install the AWS CLI
+  ansible.builtin.set_fact:
+    awscli_needs_install: "{{ awscli_installed_version | length == 0 or (awscli_version | length > 0 and awscli_installed_version != awscli_version) }}"
+  when: not awscli_skip | bool
+
+- name: Install unzip and curl for the AWS CLI bundle
+  ansible.builtin.apt:
+    name:
+      - unzip
+      - curl
+    state: present
+    update_cache: true
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool
+
+- name: Download AWS CLI v2 bundle
+  ansible.builtin.get_url:
+    url: "{{ awscli_bundle_url }}"
+    dest: "{{ awscli_tmp_dir }}/awscliv2.zip"
+    mode: "0644"
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool
+  vars:
+    awscli_bundle_url: >-
+      {{
+        'https://awscli.amazonaws.com/awscli-exe-linux-' ~ awscli_bundle_arch ~ '.zip'
+        if awscli_version | length == 0
+        else
+          'https://awscli.amazonaws.com/awscli-exe-linux-'
+          ~ awscli_bundle_arch
+          ~ '-'
+          ~ awscli_version
+          ~ '.zip'
+      }}
+
+- name: Unpack AWS CLI v2 bundle
+  ansible.builtin.unarchive:
+    src: "{{ awscli_tmp_dir }}/awscliv2.zip"
+    dest: "{{ awscli_tmp_dir }}"
+    remote_src: true
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool
+
+- name: Run AWS CLI installer
+  ansible.builtin.command:
+    cmd: "{{ awscli_tmp_dir }}/aws/install -i {{ awscli_install_dir }} -b {{ awscli_bin_dir }} --update"
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool
+
+- name: Remove AWS CLI installer files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ awscli_tmp_dir }}/awscliv2.zip"
+    - "{{ awscli_tmp_dir }}/aws"
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool
+
+- name: Assert installed AWS CLI version
+  ansible.builtin.command: "{{ awscli_bin_dir }}/aws --version"
+  register: awscli_version_after
+  changed_when: false
+  failed_when: >-
+    awscli_version_after.rc != 0
+    or (
+      awscli_version | length > 0
+      and awscli_version not in (awscli_version_after.stdout | default(''))
+    )
+  when:
+    - not awscli_skip | bool
+    - awscli_needs_install | default(false) | bool

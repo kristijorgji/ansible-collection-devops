@@ -1,0 +1,7 @@
+# GeoIP.conf for geoipupdate >= 3.1.1.
+# https://dev.maxmind.com/geoip/updating-databases
+
+AccountID {{ geoip_maxmind_account_id }}
+LicenseKey {{ geoip_maxmind_license_key }}
+EditionIDs {{ geoip_edition_ids | join(' ') }}
+DatabaseDirectory {{ geoip_db_dir }}

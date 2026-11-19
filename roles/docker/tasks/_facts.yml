@@ -1,11 +1,17 @@
 ---
 # Private: architecture map and OS gate. No silent amd64 fallback.
 
+- name: Gather facts required for Docker
+  ansible.builtin.setup:
+    gather_subset:
+      - min
+  when: ansible_architecture is not defined or ansible_distribution_release is not defined
+
 - name: Fail when the OS family is not Debian
   ansible.builtin.fail:
     msg: >-
-      kristijorgji.devops.docker v1 supports Debian-family hosts only
-      (Ubuntu 22.04/24.04, Debian 12). ansible_os_family={{ ansible_os_family }}.
+      kristijorgji.devops.docker supports Debian-family hosts only
+      (Ubuntu 22.04/24.04/26.04, Debian 12/13). ansible_os_family={{ ansible_os_family }}.
   when: ansible_os_family != "Debian"
 
 - name: Fail when docker_install_source is invalid
@@ -45,12 +51,56 @@
       x86_64, amd64, aarch64, arm64.
   when: ansible_architecture not in docker_arch_map
 
+- name: Expand short Docker engine version to an apt pin
+  ansible.builtin.set_fact:
+    docker_engine_version: "{{ docker_engine_apt_pin }}"
+  when: docker_engine_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
+  vars:
+    docker_engine_distro_ver: >-
+      {{
+        ansible_distribution_version
+        if ansible_distribution == 'Ubuntu'
+        else ansible_distribution_major_version
+      }}
+    docker_engine_apt_pin: >-
+      5:{{ docker_engine_version }}-1~{{ ansible_distribution | lower }}.{{ docker_engine_distro_ver }}~{{ ansible_distribution_release }}
+
+- name: Expand short Compose plugin version to an apt pin
+  ansible.builtin.set_fact:
+    docker_compose_plugin_version: "{{ docker_compose_plugin_apt_pin }}"
+  when: docker_compose_plugin_version is match('^[0-9]+\\.[0-9]+\\.[0-9]+$')
+  vars:
+    docker_engine_distro_ver: >-
+      {{
+        ansible_distribution_version
+        if ansible_distribution == 'Ubuntu'
+        else ansible_distribution_major_version
+      }}
+    docker_compose_plugin_apt_pin: >-
+      {{ docker_compose_plugin_version }}-1~{{ ansible_distribution | lower }}.{{ docker_engine_distro_ver }}~{{ ansible_distribution_release }}
+
 - name: Set docker apt and Compose GitHub architectures
   ansible.builtin.set_fact:
     docker_apt_arch: "{{ docker_apt_arch if docker_apt_arch | length > 0 else docker_arch_map[ansible_architecture].apt }}"
     docker_compose_github_arch: "{{ docker_arch_map[ansible_architecture].compose }}"
     docker_want_compose_plugin: "{{ docker_compose_install in ['plugin', 'both'] }}"
     docker_want_compose_standalone: "{{ docker_compose_install in ['standalone', 'both'] }}"
+    docker_daemon_effective: "{{ docker_daemon_effective_merged }}"
+  vars:
+    docker_daemon_log_defaults: >-
+      {{
+        {
+          'log-driver': docker_daemon_log_driver,
+          'log-opts': {
+            'max-size': docker_daemon_log_max_size,
+            'max-file': docker_daemon_log_max_file
+          }
+        }
+        if docker_daemon_log_rotation | bool
+        else {}
+      }}
+    docker_daemon_effective_merged: >-
+      {{ docker_daemon_log_defaults | combine(docker_daemon_options, recursive=True) }}
 
 - name: Fail when distro packages are asked for the Compose plugin
   ansible.builtin.fail:

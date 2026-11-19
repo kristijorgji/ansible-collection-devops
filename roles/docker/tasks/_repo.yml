@@ -1,5 +1,5 @@
 ---
-# Private: Docker Inc. apt keyring + repo (Debian family).
+# Private: Docker Inc. apt keyring + deb822 repo (Debian family).
 
 - name: Install apt HTTPS dependencies
   ansible.builtin.apt:
@@ -7,6 +7,7 @@
       - ca-certificates
       - curl
       - gnupg
+      - python3-debian
     state: present
     update_cache: true
 
@@ -25,13 +26,27 @@
     mode: "0644"
     owner: root
     group: root
+    force: "{{ docker_repo_key_refresh | bool }}"
 
 - name: Add Docker apt repository
-  ansible.builtin.apt_repository:
-    repo: >-
-      deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc]
-      {{ docker_repo_url }}/{{ ansible_distribution | lower }}
-      {{ ansible_distribution_release }} {{ docker_apt_channel }}
-    filename: docker
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: "{{ docker_repo_url }}/{{ ansible_distribution | lower }}"
+    suites: "{{ ansible_distribution_release }}"
+    components:
+      - "{{ docker_apt_channel }}"
+    architectures: "{{ docker_apt_arch }}"
+    signed_by: /etc/apt/keyrings/docker.asc
     state: present
+    enabled: true
+
+- name: Remove leftover one-line Docker apt list
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
+  when: docker_repo_remove_legacy_list | bool
+
+- name: Update apt cache after Docker repo
+  ansible.builtin.apt:
     update_cache: true

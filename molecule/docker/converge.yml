@@ -9,4 +9,3 @@
         docker_users:
           - "{{ ansible_user | default('root') }}"
         docker_compose_install: both
-        docker_compose_standalone_version: v5.6.1

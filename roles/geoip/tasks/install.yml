@@ -1,0 +1,114 @@
+---
+# Public tasks_from: install — GeoLite2 via geoipupdate, URL, or verify-only.
+
+- name: Fail when geoip_initial_update is invalid
+  ansible.builtin.fail:
+    msg: geoip_initial_update must be missing, always, or never (got {{ geoip_initial_update }}).
+  when: geoip_initial_update not in ["missing", "always", "never"]
+
+- name: Resolve GeoIP configuration mode
+  ansible.builtin.set_fact:
+    geoip_configured: "{{ geoip_enabled | bool }}"
+    geoip_use_geoipupdate: "{{ geoip_enabled | bool and geoip_maxmind_account_id | length > 0 and geoip_maxmind_license_key | length > 0 }}"
+    geoip_use_download_url: "{{ geoip_enabled | bool and geoip_db_download_url | length > 0 and not (geoip_maxmind_account_id | length > 0 and geoip_maxmind_license_key | length > 0) }}"
+
+- name: Ensure GeoIP database directory exists
+  ansible.builtin.file:
+    path: "{{ geoip_db_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: geoip_configured | bool
+
+- name: Install geoipupdate package
+  ansible.builtin.apt:
+    name: geoipupdate
+    state: present
+    update_cache: true
+  when: geoip_use_geoipupdate | bool
+
+- name: Deploy GeoIP.conf for geoipupdate
+  ansible.builtin.template:
+    src: GeoIP.conf.j2
+    dest: "{{ geoip_conf_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: geoip_use_geoipupdate | bool
+
+- name: Stat GeoIP databases before update
+  ansible.builtin.stat:
+    path: "{{ geoip_db_dir }}/{{ item }}.mmdb"
+  loop: "{{ geoip_edition_ids }}"
+  register: geoip_db_stats_before
+  when:
+    - geoip_use_geoipupdate | bool
+    - geoip_initial_update == "missing"
+
+- name: Run initial geoipupdate
+  ansible.builtin.command:
+    cmd: /usr/bin/geoipupdate -f {{ geoip_conf_path }}
+  register: geoip_update_initial
+  changed_when: geoip_update_initial.rc == 0
+  when:
+    - geoip_use_geoipupdate | bool
+    - geoip_initial_update == "always" or (geoip_initial_update == "missing" and (geoip_db_stats_before.results | default([]) | rejectattr('stat.exists') | list | length > 0))
+
+- name: Install weekly geoipupdate cron
+  ansible.builtin.cron:
+    name: "{{ geoip_cron_name }}"
+    minute: "{{ geoip_cron_minute }}"
+    hour: "{{ geoip_cron_hour }}"
+    weekday: "{{ geoip_cron_weekday }}"
+    user: root
+    job: "/usr/bin/geoipupdate -f {{ geoip_conf_path }}"
+    state: present
+  when:
+    - geoip_use_geoipupdate | bool
+    - geoip_cron_enabled | bool
+
+- name: Download GeoIP database from URL
+  ansible.builtin.get_url:
+    url: "{{ geoip_db_download_url }}"
+    dest: "{{ geoip_db_dir }}/{{ geoip_db_download_filename }}"
+    mode: "0644"
+  when: geoip_use_download_url | bool
+
+- name: Stat required GeoIP databases
+  ansible.builtin.stat:
+    path: "{{ geoip_required_db_path }}"
+  loop: "{{ geoip_required_editions }}"
+  loop_control:
+    loop_var: geoip_required_edition
+  register: geoip_db_stats
+  when: geoip_configured | bool
+  vars:
+    geoip_required_editions: "{{ geoip_edition_ids if geoip_use_geoipupdate | bool or not (geoip_use_download_url | bool) else [geoip_db_download_filename | regex_replace('\\.mmdb$', '')] }}"
+    geoip_required_db_path: "{{ geoip_db_dir }}/{{ geoip_required_edition if geoip_required_edition.endswith('.mmdb') else geoip_required_edition ~ '.mmdb' }}"
+
+- name: Publish GeoIP database presence facts
+  ansible.builtin.set_fact:
+    geoip_databases_present: "{{ geoip_databases_present_map }}"
+  when: geoip_configured | bool
+  vars:
+    geoip_databases_present_map: >-
+      {{
+        dict(
+          geoip_db_stats.results
+          | map(attribute='geoip_required_edition')
+          | zip(geoip_db_stats.results | map(attribute='stat.exists'))
+        )
+      }}
+
+- name: Fail when a required GeoIP database is missing
+  ansible.builtin.fail:
+    msg: >-
+      GeoIP database {{ item.geoip_required_edition }} not found under
+      {{ geoip_db_dir }}. Set MaxMind credentials or geoip_db_download_url,
+      or place the .mmdb file before enabling geoip.
+  loop: "{{ geoip_db_stats.results | default([]) }}"
+  when:
+    - geoip_configured | bool
+    - not (item.stat.exists | default(false) | bool)

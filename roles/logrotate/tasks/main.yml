@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.logrotate — `roles:` renders /etc/logrotate.d entries.
+- name: Install logrotate entries
+  ansible.builtin.import_tasks: install.yml

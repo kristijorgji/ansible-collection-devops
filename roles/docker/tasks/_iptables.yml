@@ -1,0 +1,41 @@
+---
+# Private: optional iptables backend (legacy vs nft). Empty docker_iptables_backend is a no-op.
+# Decide from the current iptables Value only. Alternative: lines always list both backends,
+# and ip6tables paths never appear in the iptables query, so matching item.path against that
+# stdout would switch ip6tables (and restart Docker) on every run.
+# Query runs in check mode so the switch when can be evaluated without notifying Restart docker.
+
+- name: Query current iptables backend
+  ansible.builtin.command: update-alternatives --query iptables
+  register: docker_iptables_alt
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: docker_iptables_backend|length > 0
+
+- name: Switch iptables backend for Docker
+  ansible.builtin.command: "update-alternatives --set {{ item.name }} {{ item.path }}"
+  loop: "{{ docker_iptables_switch }}"
+  notify: Restart docker
+  when:
+    - docker_iptables_backend|length > 0
+    - docker_iptables_alt.rc|default(1) == 0
+    - docker_iptables_alt.stdout is not search(docker_iptables_value_pattern)
+  vars:
+    docker_iptables_value_pattern: "(?m)^Value: /usr/sbin/iptables-{{ docker_iptables_backend }}$"
+    docker_iptables_switch: >-
+      {{
+        [
+          {'name': 'iptables', 'path': '/usr/sbin/iptables-legacy'},
+          {'name': 'ip6tables', 'path': '/usr/sbin/ip6tables-legacy'}
+        ]
+        if docker_iptables_backend == 'legacy'
+        else (
+          [
+            {'name': 'iptables', 'path': '/usr/sbin/iptables-nft'},
+            {'name': 'ip6tables', 'path': '/usr/sbin/ip6tables-nft'}
+          ]
+          if docker_iptables_backend == 'nft'
+          else []
+        )
+      }}

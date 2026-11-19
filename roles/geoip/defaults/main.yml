@@ -1,0 +1,19 @@
+---
+# Defaults for kristijorgji.devops.geoip.
+
+geoip_enabled: true
+geoip_maxmind_account_id: ""
+geoip_maxmind_license_key: ""
+geoip_edition_ids:
+  - GeoLite2-Country
+  - GeoLite2-City
+geoip_db_dir: /usr/share/GeoIP
+geoip_conf_path: /etc/GeoIP.conf
+geoip_db_download_url: ""
+geoip_db_download_filename: "{{ geoip_edition_ids[0] }}.mmdb"
+geoip_initial_update: missing
+geoip_cron_enabled: true
+geoip_cron_name: "geoipupdate {{ geoip_edition_ids | join(' ') }}"
+geoip_cron_minute: "0"
+geoip_cron_hour: "3"
+geoip_cron_weekday: "0"

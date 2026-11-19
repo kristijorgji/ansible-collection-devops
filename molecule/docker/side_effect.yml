@@ -1,0 +1,12 @@
+---
+- name: Bump Docker engine and Compose on Ubuntu 22.04/24.04
+  hosts: ubuntu2204:ubuntu2404
+  become: true
+  gather_facts: true
+  roles:
+    - role: kristijorgji.devops.docker
+      vars:
+        docker_engine_version: "29.10.0"
+        docker_compose_standalone_version: v5.8.0
+        docker_compose_install: both
+        docker_python_sdk: apt

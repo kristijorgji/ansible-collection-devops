@@ -1,0 +1,59 @@
+---
+# Public tasks_from: install — script, dirs, and cron (or remove them).
+
+- name: Fail when compose_watchdog_state is invalid
+  ansible.builtin.fail:
+    msg: compose_watchdog_state must be present or absent (got {{ compose_watchdog_state }}).
+  when: compose_watchdog_state not in ["present", "absent"]
+
+- name: Install cron and flock packages
+  ansible.builtin.apt:
+    name:
+      - cron
+      - util-linux
+    state: present
+    update_cache: true
+  when: compose_watchdog_state == "present"
+
+- name: Ensure compose watchdog directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ compose_watchdog_log_dir }}"
+    - "{{ compose_watchdog_hooks_dir }}"
+  when: compose_watchdog_state == "present"
+
+- name: Install compose watchdog script
+  ansible.builtin.template:
+    src: docker-compose-up.sh.j2
+    dest: "{{ compose_watchdog_script_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: compose_watchdog_state == "present"
+
+- name: Remove compose watchdog script
+  ansible.builtin.file:
+    path: "{{ compose_watchdog_script_path }}"
+    state: absent
+  when: compose_watchdog_state == "absent"
+
+- name: Manage compose watchdog cron
+  ansible.builtin.cron:
+    name: "{{ compose_watchdog_cron_name }}"
+    minute: "{{ compose_watchdog_schedule.split()[0] }}"
+    hour: "{{ compose_watchdog_schedule.split()[1] }}"
+    day: "{{ compose_watchdog_schedule.split()[2] }}"
+    month: "{{ compose_watchdog_schedule.split()[3] }}"
+    weekday: "{{ compose_watchdog_schedule.split()[4] }}"
+    user: "{{ compose_watchdog_cron_user }}"
+    job: "{{ compose_watchdog_cron_job }}"
+    state: "{{ compose_watchdog_state }}"
+  vars:
+    compose_watchdog_cron_job: >-
+      {{ compose_watchdog_script_path }} {{ compose_watchdog_log_dir }}
+      {{ compose_watchdog_paths | join(' ') }}

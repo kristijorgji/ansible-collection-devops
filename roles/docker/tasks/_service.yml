@@ -1,5 +1,5 @@
 ---
-# Private: docker group + engine service. daemon.json only when docker_daemon_options is non-empty.
+# Private: docker group + engine service. daemon.json when effective options are non-empty.
 # After replacing docker.io, docker.socket can be in start-limit; reset then start the socket
 # before dockerd (-H fd:// requires socket activation).
 
@@ -15,7 +15,14 @@
     owner: root
     group: root
     mode: "0755"
-  when: docker_daemon_options | length > 0
+  when: docker_daemon_effective | length > 0
+
+- name: Slurp existing Docker daemon.json
+  ansible.builtin.slurp:
+    src: /etc/docker/daemon.json
+  register: docker_daemon_existing
+  failed_when: false
+  when: docker_daemon_effective | length > 0
 
 - name: Write Docker daemon.json
   ansible.builtin.copy:
@@ -23,9 +30,20 @@
     owner: root
     group: root
     mode: "0644"
-    content: "{{ docker_daemon_options | to_nice_json }}\n"
+    content: "{{ docker_daemon_effective | to_nice_json }}\n"
+    validate: /usr/bin/dockerd --validate --config-file %s
   notify: Restart docker
-  when: docker_daemon_options | length > 0
+  when:
+    - docker_daemon_effective | length > 0
+    - docker_daemon_needs_write | bool
+  vars:
+    docker_daemon_existing_obj: >-
+      {{
+        (docker_daemon_existing.content | b64decode | from_json)
+        if (docker_daemon_existing.content is defined)
+        else {}
+      }}
+    docker_daemon_needs_write: "{{ docker_daemon_existing_obj != docker_daemon_effective }}"
 
 - name: Reload systemd after Docker package changes
   ansible.builtin.systemd:

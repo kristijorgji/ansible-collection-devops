@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.compose_watchdog — `roles:` converges the watchdog script and cron.
+- name: Install compose watchdog
+  ansible.builtin.import_tasks: install.yml

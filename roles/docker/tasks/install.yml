@@ -23,6 +23,12 @@
     - not docker_skip | bool
     - docker_install_source in ["ce", "distro"]
 
+- name: Configure iptables backend for Docker
+  ansible.builtin.include_tasks: _iptables.yml
+  when:
+    - not docker_skip | bool
+    - docker_iptables_backend | length > 0
+
 - name: Configure Docker service
   ansible.builtin.include_tasks: _service.yml
   when: not docker_skip | bool

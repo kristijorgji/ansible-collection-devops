@@ -1,0 +1,28 @@
+---
+# Public tasks_from: install — apt packages and optional renew cron.
+
+- name: Skip kristijorgji.devops.certbot
+  ansible.builtin.debug:
+    msg: certbot_skip is true; not installing Certbot.
+  when: certbot_skip | bool
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ certbot_apt_cache_valid_time }}"
+  become: true
+  failed_when: false
+  when: not certbot_skip | bool
+
+- name: Install Certbot packages
+  ansible.builtin.apt:
+    name: "{{ certbot_packages + certbot_extra_packages }}"
+    state: present
+  become: true
+  when: not certbot_skip | bool
+
+- name: Configure Certbot renew cron
+  ansible.builtin.include_tasks: _renew_cron.yml
+  when:
+    - not certbot_skip | bool
+    - certbot_renew_cron | bool

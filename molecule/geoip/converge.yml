@@ -1,0 +1,17 @@
+---
+- name: Converge kristijorgji.devops.geoip (download URL)
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install GeoIP via download URL
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.geoip
+        tasks_from: install
+      vars:
+        geoip_edition_ids:
+          - GeoLite2-Country
+        geoip_db_download_url: http://127.0.0.1:8099/GeoLite2-Country.mmdb
+        geoip_db_download_filename: GeoLite2-Country.mmdb
+        geoip_cron_enabled: false
+        geoip_initial_update: never

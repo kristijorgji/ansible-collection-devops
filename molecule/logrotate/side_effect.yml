@@ -1,0 +1,46 @@
+---
+- name: Overlapping globs must fail validation
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Snapshot valid app-logs file
+      ansible.builtin.slurp:
+        src: /etc/logrotate.d/app-logs
+      register: logrotate_app_before
+
+    - name: Attempt overlapping globs
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.logrotate
+        tasks_from: install
+      vars:
+        logrotate_entries:
+          - name: overlap-bad
+            paths:
+              - /tmp/t/*/*.log
+              - /tmp/t/a/*.log
+            options:
+              copytruncate: true
+      ignore_errors: true
+      register: logrotate_overlap
+
+    - name: Slurp app-logs after failed overlap
+      ansible.builtin.slurp:
+        src: /etc/logrotate.d/app-logs
+      register: logrotate_app_after
+
+    - name: Assert overlap failed and the old file is unchanged
+      ansible.builtin.assert:
+        that:
+          - logrotate_overlap is failed
+          - logrotate_app_before.content == logrotate_app_after.content
+
+    - name: Remove the stale entry
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.logrotate
+        tasks_from: install
+      vars:
+        logrotate_entries:
+          - name: stale-entry
+            paths: []
+            state: absent

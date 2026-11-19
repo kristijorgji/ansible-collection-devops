@@ -1,0 +1,54 @@
+# {{ logrotate_entry.comment | default('Managed by kristijorgji.devops.logrotate') }}
+{% for path in logrotate_entry.paths | unique %}
+{{ path }}
+{% endfor %}
+{
+    {{ logrotate_entry_options.frequency }}
+    rotate {{ logrotate_entry_options.rotate }}
+{% if logrotate_entry_options.compress | default(false) | bool %}
+    compress
+{% endif %}
+{% if logrotate_entry_options.delaycompress | default(false) | bool %}
+    delaycompress
+{% endif %}
+{% if logrotate_entry_options.missingok | default(false) | bool %}
+    missingok
+{% endif %}
+{% if logrotate_entry_options.notifempty | default(false) | bool %}
+    notifempty
+{% endif %}
+{% if logrotate_entry_options.copytruncate | default(false) | bool %}
+    copytruncate
+{% endif %}
+{% if logrotate_entry_options.sharedscripts | default(false) | bool %}
+    sharedscripts
+{% endif %}
+{% if logrotate_entry_options.dateext | default(false) | bool %}
+    dateext
+{% endif %}
+{% if logrotate_entry_options.maxsize is defined %}
+    maxsize {{ logrotate_entry_options.maxsize }}
+{% endif %}
+{% if logrotate_entry_options.minsize is defined %}
+    minsize {{ logrotate_entry_options.minsize }}
+{% endif %}
+{% if logrotate_entry_options.size is defined %}
+    size {{ logrotate_entry_options.size }}
+{% endif %}
+{% if logrotate_entry_options.create is defined %}
+    create {{ logrotate_entry_options.create }}
+{% endif %}
+{% if logrotate_entry_options.su is defined %}
+    su {{ logrotate_entry_options.su }}
+{% endif %}
+{% if logrotate_entry_options.prerotate is defined %}
+    prerotate
+        {{ logrotate_entry_options.prerotate }}
+    endscript
+{% endif %}
+{% if logrotate_entry_options.postrotate is defined %}
+    postrotate
+        {{ logrotate_entry_options.postrotate }}
+    endscript
+{% endif %}
+}

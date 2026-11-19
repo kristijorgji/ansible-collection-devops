@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.awscli — `roles:` installs the AWS CLI v2 bundle.
+- name: Install AWS CLI
+  ansible.builtin.import_tasks: install.yml

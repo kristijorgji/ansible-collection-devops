@@ -1,0 +1,12 @@
+---
+- name: Upgrade AWS CLI to a newer pin
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install AWS CLI 2.22.35
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.awscli
+        tasks_from: install
+      vars:
+        awscli_version: "2.22.35"

@@ -1,0 +1,69 @@
+---
+- name: Verify kristijorgji.devops.certbot
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read Pebble availability marker
+      ansible.builtin.slurp:
+        src: /etc/pebble/available
+      register: certbot_pebble_marker
+      failed_when: false
+
+    - name: Set Pebble availability fact
+      ansible.builtin.set_fact:
+        certbot_pebble_available: "{{ (certbot_pebble_marker.content | default('') | b64decode | trim) == '1' }}"
+
+    - name: Query Certbot version
+      ansible.builtin.command: certbot --version
+      register: certbot_version_cmd
+      changed_when: false
+
+    - name: Stat renewal hooks
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/letsencrypt/renewal-hooks/pre/content-pre.sh
+        - /etc/letsencrypt/renewal-hooks/deploy/src-deploy.sh
+        - /etc/letsencrypt/renewal-hooks/post/src-post.sh
+      register: certbot_hook_stats
+
+    - name: Read root crontab
+      ansible.builtin.command: crontab -l
+      register: certbot_crontab
+      changed_when: false
+
+    - name: Stat issued lineages
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ item }}"
+      loop:
+        - test.example
+        - www.test.example
+      register: certbot_live_stats
+      when: certbot_pebble_available | bool
+
+    - name: Slurp issue-hook markers
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      loop:
+        - /tmp/certbot-issue-pre.marker
+        - /tmp/certbot-issue-post.marker
+      register: certbot_issue_markers
+      failed_when: false
+      when: certbot_pebble_available | bool
+
+    - name: Assert Certbot install, hooks, and cron
+      ansible.builtin.assert:
+        that:
+          - certbot_version_cmd.rc == 0
+          - certbot_hook_stats.results | map(attribute='stat.exists') | list is all
+          - certbot_hook_stats.results | map(attribute='stat.mode') | list | unique == ['0755']
+          - "'Certbot renew attempt every day at midnight' in certbot_crontab.stdout"
+
+    - name: Assert Pebble-issued certificates and issue hooks
+      ansible.builtin.assert:
+        that:
+          - certbot_live_stats.results | map(attribute='stat.exists') | list is all
+          - "'pre' in (certbot_issue_markers.results[0].content | default('') | b64decode)"
+          - "'post' in (certbot_issue_markers.results[1].content | default('') | b64decode)"
+      when: certbot_pebble_available | bool

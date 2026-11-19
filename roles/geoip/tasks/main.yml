@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.geoip — `roles:` converges GeoLite2 databases.
+- name: Install GeoIP databases
+  ansible.builtin.import_tasks: install.yml

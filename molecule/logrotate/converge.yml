@@ -1,0 +1,48 @@
+---
+- name: Converge kristijorgji.devops.logrotate
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Create sample log files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/log/app-a
+        - /tmp/t/a
+
+    - name: Touch sample logs
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: touch
+        mode: "0644"
+      loop:
+        - /var/log/app-a/app.log
+        - /tmp/t/a/x.log
+
+    - name: Deploy valid logrotate entries
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.logrotate
+        tasks_from: install
+      vars:
+        logrotate_entries:
+          - name: app-logs
+            comment: Valid molecule entry
+            paths:
+              - /var/log/app-a/*.log
+            options:
+              copytruncate: true
+              rotate: 7
+          - name: proxy-access
+            paths:
+              - /var/log/app-a/*.log
+            options:
+              sharedscripts: true
+              maxsize: 50M
+              postrotate: "true"
+          - name: stale-entry
+            paths:
+              - /var/log/app-a/*.log
+            state: present

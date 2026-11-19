@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: certbot
+  author: Kristi Jorgji
+  description: Install Certbot, issue HTTP-01 certificates, and deploy renewal hooks.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+  galaxy_tags:
+    - certbot
+    - letsencrypt
+    - tls
+dependencies: []

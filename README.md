@@ -2,7 +2,7 @@
 
 Public Ansible collection of reusable **devops** helpers: Node builds, rsync transfer,
 deploy skip/markers, GitHub SSH + clone, SOPS host-secret loading, SSM cache/fetch,
-S3 prefix janitor, and Docker CE + Compose.
+S3 prefix janitor, Docker CE + Compose, Certbot, GeoIP, AWS CLI, and logrotate.
 
 Install the whole collection; call only the roles / `tasks_from` you need.
 
@@ -26,7 +26,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.6.1
+    version: v0.7.0
 ```
 
 ```shell
@@ -82,16 +82,21 @@ tarball.
 
 ## Roles
 
-| Role                           | Purpose                                                              |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `kristijorgji.devops.nodejs`   | nvm/Docker builds; server `pnpm_server_install` / `nvm_server_exec`  |
-| `kristijorgji.devops.transfer` | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe         |
-| `kristijorgji.devops.deploy`   | Deploy skip gate (`check_needed`) and commit marker                  |
-| `kristijorgji.devops.git`      | SSH prepare, multi-project build hosts, shallow clone + `commitHash` |
-| `kristijorgji.devops.sops`     | Load host/group `*.sops.yml` from `environments/*/secrets/`          |
-| `kristijorgji.devops.ssm`      | Optional `ssm_cache.yml` include + live Parameter Store fetch        |
-| `kristijorgji.devops.s3`       | Keep-last-N janitor for versioned S3 key prefixes                    |
-| `kristijorgji.devops.docker`   | Docker CE (amd64/arm64) + Compose plugin and/or standalone binary    |
+| Role                                   | Purpose                                                              |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `kristijorgji.devops.nodejs`           | nvm/Docker builds; server `pnpm_server_install` / `nvm_server_exec`  |
+| `kristijorgji.devops.transfer`         | Rsync one tree, path list, prune+rsync, bind-mount-safe wipe         |
+| `kristijorgji.devops.deploy`           | Deploy skip gate (`check_needed`) and commit marker                  |
+| `kristijorgji.devops.git`              | SSH prepare, multi-project build hosts, shallow clone + `commitHash` |
+| `kristijorgji.devops.sops`             | Load host/group `*.sops.yml` from `environments/*/secrets/`          |
+| `kristijorgji.devops.ssm`              | Optional `ssm_cache.yml` include + live Parameter Store fetch        |
+| `kristijorgji.devops.s3`               | Keep-last-N janitor for versioned S3 key prefixes                    |
+| `kristijorgji.devops.docker`           | Docker CE (amd64/arm64) + Compose plugin and/or standalone binary    |
+| `kristijorgji.devops.compose_watchdog` | Cron `compose up -d` watchdog with optional hooks                    |
+| `kristijorgji.devops.certbot`          | Certbot install, HTTP-01 issuance, renewal hooks                     |
+| `kristijorgji.devops.geoip`            | GeoLite2 via geoipupdate or a one-shot URL                           |
+| `kristijorgji.devops.awscli`           | AWS CLI v2 zip bundle (amd64/arm64)                                  |
+| `kristijorgji.devops.logrotate`        | `/etc/logrotate.d` entries with overlapping-glob validation          |
 
 See each role’s `README.md` for full `tasks_from` tables and variables.
 
@@ -234,4 +239,6 @@ S_NODE_VERSION=22.16.0 bash \
 - For `ssm`: `amazon.aws` + controller `boto3`
 - For `s3` / `janitor_prefixes`: controller `boto3` on `ansible_playbook_python`
 - For native Node builds: [nvm](https://github.com/nvm-sh/nvm) on the build host (Homebrew or `~/.nvm`)
-- For `docker`: Debian-family target (Ubuntu 22.04/24.04, Debian 12), amd64 or arm64
+- For `docker`: Debian-family target (Ubuntu 22.04/24.04/26.04, Debian 12/13), amd64 or arm64
+- For `geoip`: Ubuntu universe or Debian contrib (`geoipupdate`)
+- For `awscli`: `unzip` and `curl` (installed by the role when it downloads a bundle)
