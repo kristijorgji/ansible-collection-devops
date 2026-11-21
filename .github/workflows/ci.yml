@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Lint collection
         run: make lint
 
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -89,7 +89,7 @@ jobs:
             ansible-core: "2.19.10"
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
