@@ -1,0 +1,78 @@
+---
+- name: Verify kristijorgji.devops.ops_notify
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stat installed files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/local/bin/ops-notify
+        - /etc/ops-notify/smtp.env
+        - /etc/ops-notify/sendgrid.env
+      register: ops_notify_stats
+
+    - name: Assert binary mode, env mode, and jq
+      ansible.builtin.assert:
+        that:
+          - ops_notify_stats.results[0].stat.exists
+          - ops_notify_stats.results[0].stat.mode == '0755'
+          - ops_notify_stats.results[1].stat.exists
+          - ops_notify_stats.results[1].stat.mode == '0640'
+          - ops_notify_stats.results[2].stat.exists
+          - ops_notify_stats.results[2].stat.mode == '0640'
+
+    - name: Check jq is on PATH
+      ansible.builtin.command: jq --version
+      register: ops_notify_jq
+      changed_when: false
+
+    - name: Write a body with quotes and ANSI
+      ansible.builtin.shell: printf 'crawler failed "quote" \033[31mred\033[0m\n' >/tmp/ops-notify-body.txt
+      changed_when: true
+
+    - name: SMTP dry-run
+      ansible.builtin.command: >
+        /usr/local/bin/ops-notify alert --event test --severity error
+        --subject "dry run" --body-file /tmp/ops-notify-body.txt
+      environment:
+        OPS_NOTIFY_ENV_FILE: /etc/ops-notify/smtp.env
+        OPS_NOTIFY_DRY_RUN: "1"
+      register: ops_notify_smtp_dry
+      changed_when: false
+
+    - name: SendGrid dry-run
+      ansible.builtin.command: >
+        /usr/local/bin/ops-notify alert --event test --severity error
+        --subject "dry run" --body-file /tmp/ops-notify-body.txt
+      environment:
+        OPS_NOTIFY_ENV_FILE: /etc/ops-notify/sendgrid.env
+        OPS_NOTIFY_DRY_RUN: "1"
+      register: ops_notify_sg_dry
+      changed_when: false
+
+    - name: Parse SendGrid dry-run payload as JSON
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import json, os, re, sys
+        text = os.environ["SG_STDERR"]
+        match = re.search(r"DRY_RUN payload=(.*)$", text, re.M | re.S)
+        if not match:
+            raise SystemExit("missing DRY_RUN payload")
+        json.loads(match.group(1).strip())
+        PY
+      environment:
+        SG_STDERR: "{{ ops_notify_sg_dry.stderr }}"
+      changed_when: false
+
+    - name: Assert SMTP uses smtps and SendGrid does not
+      ansible.builtin.assert:
+        that:
+          - ops_notify_jq.rc == 0
+          - "'smtps://mail.example.com:465' in ops_notify_smtp_dry.stderr"
+          - "'api.sendgrid.com' not in ops_notify_smtp_dry.stderr"
+          - "'api.sendgrid.com' in ops_notify_sg_dry.stderr"
+          - "'smtps://' not in ops_notify_sg_dry.stderr"
+          - "'smtp-secret' not in ops_notify_smtp_dry.stderr"
+          - "'SG.test-key' not in ops_notify_sg_dry.stderr"

@@ -1,0 +1,4 @@
+---
+# kristijorgji.devops.ops_notify — `roles:` installs the script and env.
+- name: Install ops-notify
+  ansible.builtin.import_tasks: install.yml

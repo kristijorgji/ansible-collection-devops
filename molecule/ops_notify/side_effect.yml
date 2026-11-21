@@ -1,0 +1,8 @@
+---
+- name: No extra side effect for ops_notify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Placeholder
+      ansible.builtin.debug:
+        msg: ops_notify side_effect is unused

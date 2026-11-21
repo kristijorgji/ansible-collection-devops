@@ -1,0 +1,47 @@
+---
+# Public tasks_from: install — jq, curl, group, script, env.
+
+- name: Install ops-notify packages
+  ansible.builtin.apt:
+    name:
+      - jq
+      - curl
+    state: present
+    update_cache: true
+
+- name: Ensure ops-notify group
+  ansible.builtin.group:
+    name: "{{ ops_notify_group }}"
+    state: present
+  when: ops_notify_manage_group | bool
+
+- name: Add ops-notify members
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ ops_notify_group }}"
+    append: true
+  loop: "{{ ops_notify_members }}"
+  when: ops_notify_manage_group | bool
+
+- name: Ensure ops-notify config directory
+  ansible.builtin.file:
+    path: "{{ ops_notify_config_dir }}"
+    state: directory
+    owner: "{{ ops_notify_user }}"
+    group: "{{ ops_notify_group }}"
+    mode: "{{ ops_notify_dir_mode }}"
+
+- name: Install ops-notify script
+  ansible.builtin.copy:
+    src: ops-notify.sh
+    dest: /usr/local/bin/ops-notify
+    mode: "0755"
+
+- name: Install ops-notify env
+  ansible.builtin.template:
+    src: ops-notify.env.j2
+    dest: "{{ ops_notify_env_path }}"
+    owner: "{{ ops_notify_user }}"
+    group: "{{ ops_notify_group }}"
+    mode: "{{ ops_notify_env_mode }}"
+  no_log: true

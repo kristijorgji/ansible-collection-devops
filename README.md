@@ -2,7 +2,7 @@
 
 Public Ansible collection of reusable **devops** helpers: Node builds, rsync transfer,
 deploy skip/markers, GitHub SSH + clone, SOPS host-secret loading, SSM cache/fetch,
-S3 prefix janitor, Docker CE + Compose, Certbot, GeoIP, AWS CLI, and logrotate.
+S3 prefix janitor, Docker CE + Compose, Certbot, GeoIP, AWS CLI, logrotate, and ops-notify.
 
 Install the whole collection; call only the roles / `tasks_from` you need.
 
@@ -26,7 +26,7 @@ Install the whole collection; call only the roles / `tasks_from` you need.
 collections:
   - name: https://github.com/kristijorgji/ansible-collection-devops.git
     type: git
-    version: v0.7.1
+    version: v0.8.0
 ```
 
 ```shell
@@ -97,6 +97,7 @@ tarball.
 | `kristijorgji.devops.geoip`            | GeoLite2 via geoipupdate or a one-shot URL                           |
 | `kristijorgji.devops.awscli`           | AWS CLI v2 zip bundle (amd64/arm64)                                  |
 | `kristijorgji.devops.logrotate`        | `/etc/logrotate.d` entries with overlapping-glob validation          |
+| `kristijorgji.devops.ops_notify`       | Host cron notifier (SMTPS and/or SendGrid, webhooks, healthchecks)   |
 
 See each role’s `README.md` for full `tasks_from` tables and variables.
 

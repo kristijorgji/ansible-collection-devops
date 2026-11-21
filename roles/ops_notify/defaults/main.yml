@@ -1,0 +1,19 @@
+---
+# Empty defaults keep the role a no-op until group_vars (or extra vars) fill them in.
+ops_notify_user: root
+ops_notify_group: ops-notify
+ops_notify_manage_group: true
+ops_notify_members: []
+ops_notify_config_dir: /etc/ops-notify
+ops_notify_env_path: "{{ ops_notify_config_dir }}/ops-notify.env"
+ops_notify_dir_mode: "0750"
+ops_notify_env_mode: "0640"
+ops_notify_email_to: []
+ops_notify_email_from: ""
+ops_notify_sendgrid_api_key: ""
+ops_notify_smtp_host: ""
+ops_notify_smtp_port: 465
+ops_notify_smtp_user: ""
+ops_notify_smtp_password: ""
+ops_notify_webhooks: [] # [{ name: slack-ops, url: "...", format: slack|json }]
+ops_notify_healthchecks: {} # { job-name: "https://hc-ping.com/<uuid>" }
