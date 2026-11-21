@@ -1,0 +1,34 @@
+---
+- name: Converge kristijorgji.devops.ops_notify
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install SMTP-only ops-notify env
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.ops_notify
+        tasks_from: install
+      vars:
+        ops_notify_env_path: /etc/ops-notify/smtp.env
+        ops_notify_email_from: "Ops <noreply@example.com>"
+        ops_notify_email_to:
+          - admin@example.com
+        ops_notify_smtp_host: mail.example.com
+        ops_notify_smtp_port: 465
+        ops_notify_smtp_user: app@example.com
+        ops_notify_smtp_password: smtp-secret
+        ops_notify_sendgrid_api_key: ""
+
+    - name: Install SendGrid-only ops-notify env
+      ansible.builtin.include_role:
+        name: kristijorgji.devops.ops_notify
+        tasks_from: install
+      vars:
+        ops_notify_env_path: /etc/ops-notify/sendgrid.env
+        ops_notify_email_from: "Ops <noreply@example.com>"
+        ops_notify_email_to:
+          - user@hotmail.com
+        ops_notify_smtp_host: ""
+        ops_notify_smtp_user: ""
+        ops_notify_smtp_password: ""
+        ops_notify_sendgrid_api_key: SG.test-key

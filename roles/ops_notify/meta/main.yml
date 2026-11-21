@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: ops_notify
+  author: Kristi Jorgji
+  description: Host-level cron notifier (SMTPS and/or SendGrid, webhooks, healthcheck pings).
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+        - resolute
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+  galaxy_tags:
+    - monitoring
+    - email
+    - cron
+dependencies: []

@@ -1,14 +1,15 @@
 ---
 namespace: kristijorgji
 name: devops
-version: 0.7.1
+version: 0.8.0
 readme: README.md
 authors:
   - Kristi Jorgji
 description: >
   Reusable Ansible roles for devops build, transfer, deploy skip, git SSH/clone,
   SOPS host-secret loading, SSM cache/fetch, S3 prefix janitor, Docker CE +
-  Compose, Certbot, GeoIP, AWS CLI, and logrotate (Node via nvm or Docker, rsync).
+  Compose, Certbot, GeoIP, AWS CLI, logrotate, and ops-notify (Node via nvm or
+  Docker, rsync).
 license:
   - MIT
 tags:
@@ -28,6 +29,7 @@ tags:
   - logrotate
   - awscli
   - compose
+  - monitoring
 repository: https://github.com/kristijorgji/ansible-collection-devops
 documentation: https://github.com/kristijorgji/ansible-collection-devops
 homepage: https://github.com/kristijorgji/ansible-collection-devops
