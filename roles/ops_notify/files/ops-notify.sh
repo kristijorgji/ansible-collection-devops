@@ -179,10 +179,18 @@ send_smtps() {
   local eml errfile code
   eml="$(mktemp)"
   errfile="$(mktemp)"
+  local mid
+  if [[ -r /proc/sys/kernel/random/uuid ]]; then
+    mid="$(tr -d '[:space:]' </proc/sys/kernel/random/uuid)"
+  else
+    mid="$(openssl rand -hex 16)"
+  fi
   {
     printf 'From: %s\r\n' "${OPS_NOTIFY_EMAIL_FROM}"
     printf 'To: %s\r\n' "$to_header"
     printf 'Subject: %s\r\n' "$subject"
+    printf 'Date: %s\r\n' "$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+    printf 'Message-ID: <%s@%s>\r\n' "$mid" "$(email_domain "$FROM_EMAIL")"
     printf 'MIME-Version: 1.0\r\n'
     printf 'Content-Type: text/plain; charset=UTF-8\r\n'
     printf '\r\n'
@@ -218,6 +226,9 @@ send_sendgrid() {
   local key="${OPS_NOTIFY_SENDGRID_API_KEY:-}"
   if [[ -z "$key" || ${#rcpts[@]} -eq 0 ]]; then
     return 0
+  fi
+  if [[ -z "$body" ]]; then
+    body="${subject:- }"
   fi
 
   local payload=""

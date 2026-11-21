@@ -81,7 +81,7 @@ ops-notify run --check my-check --alert-event job.failed -- \
 
 | Command | Behaviour |
 | ------- | --------- |
-| `alert` | Email each `OPS_NOTIFY_EMAIL_TO` over SMTPS when the recipient domain matches `From` and SMTP is configured; otherwise SendGrid `POST https://api.sendgrid.com/v3/mail/send`. Slack webhooks send `{"text": "<subject>\n<body>"}`; `json` webhooks send `event`, `severity`, `subject`, `body`, `host`, `time`. Body is capped at 10 KB. |
+| `alert` | Email each `OPS_NOTIFY_EMAIL_TO` over SMTPS when the recipient domain matches `From` and SMTP is configured; otherwise SendGrid `POST https://api.sendgrid.com/v3/mail/send`. SMTPS messages include `Date` and `Message-ID` so Rspamd does not rewrite or greylist them. Empty SendGrid bodies fall back to the subject (API rejects `""`). Slack webhooks send `{"text": "<subject>\n<body>"}`; `json` webhooks send `event`, `severity`, `subject`, `body`, `host`, `time`. Body is capped at 10 KB. |
 | `ping` | POST to `OPS_NOTIFY_HC_<CHECK>` (`success`), `<url>/start`, or `<url>/fail`. Missing URL returns 0 with no request. |
 | `run` | `ping start`, run the command (output teed to stdout and a temp file), then `ping success` or `ping fail` with the last 100 lines. On failure, `alert` when `--alert-event` is set. Exit status is the command's. |
 
