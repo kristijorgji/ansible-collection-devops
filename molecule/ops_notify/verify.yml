@@ -76,3 +76,7 @@
           - "'smtps://' not in ops_notify_sg_dry.stderr"
           - "'smtp-secret' not in ops_notify_smtp_dry.stderr"
           - "'SG.test-key' not in ops_notify_sg_dry.stderr"
+
+    - name: Assert SMTPS messages include Date and Message-ID
+      ansible.builtin.command: grep -E "Date:|Message-ID:" /usr/local/bin/ops-notify
+      changed_when: false
