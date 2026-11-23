@@ -32,9 +32,9 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install ansible-core
-        run: pip install ansible-core==2.21.2
+        run: pip install ansible-core==2.22.0
       - name: Build collection
         run: |
           mkdir -p dist
@@ -64,7 +64,7 @@ jobs:
           - ubuntu-24.04
           - ubuntu-24.04-arm
         ansible-core:
-          - "2.21.2"
+          - "2.22.0"
         include:
           - role: docker
             runner: ubuntu-24.04
@@ -93,7 +93,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install Molecule and ansible-core
         run: |
           pip install -r requirements-dev.txt
